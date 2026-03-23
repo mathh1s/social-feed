@@ -9,10 +9,7 @@ FROM alpine:3.20
 RUN apk add --no-cache ca-certificates
 WORKDIR /app
 COPY --from=build /bin/feed .
-COPY index.html .
-COPY favicon.ico favicon.svg favicon-16x16.png favicon-32x32.png ./
-COPY apple-touch-icon.png android-chrome-192x192.png android-chrome-512x512.png ./
-COPY site.webmanifest .
+COPY static/ static/
 EXPOSE 7291
 VOLUME ["/app/data"]
 ENV DB_PATH=/app/data/feed.db
