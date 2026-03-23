@@ -1,0 +1,5 @@
+feed.db
+feed.db-wal
+feed.db-shm
+*.exe
+/data/

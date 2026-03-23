@@ -1,0 +1,4 @@
+feed.db*
+data/
+.git/
+*.exe

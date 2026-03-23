@@ -1,0 +1,13 @@
+services:
+  feed:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - feed-data:/app/data
+    environment:
+      - DB_PATH=/app/data/feed.db
+    restart: unless-stopped
+
+volumes:
+  feed-data:

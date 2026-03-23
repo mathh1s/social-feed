@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>the feed</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0c0b;
+    --surface: #1a1714;
+    --card: #f4efe8;
+    --card-alt: #e8e0d4;
+    --ink: #0e0c0b;
+    --ink-light: #5a5349;
+    --accent: #c4573a;
+    --accent-glow: #e0714f;
+    --cream: #f4efe8;
+    --cream-dim: #a89e91;
+    --serif: 'Instrument Serif', 'Georgia', serif;
+    --sans: 'DM Sans', system-ui, sans-serif;
+    --grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html { font-size: 16px; }
+
+  body {
+    background: var(--bg);
+    color: var(--cream);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+
+    &::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: var(--grain);
+      pointer-events: none;
+      z-index: 9999;
+      mix-blend-mode: overlay;
+    }
+  }
+
+  .shell {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 6rem;
+  }
+
+  /* -- MASTHEAD -- */
+  .masthead {
+    text-align: center;
+    padding: 3.5rem 0 2.5rem;
+    border-bottom: 1px solid rgba(244,239,232,0.08);
+    margin-bottom: 2.5rem;
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 3px;
+      background: var(--accent);
+    }
+
+    & h1 {
+      font-family: var(--serif);
+      font-size: clamp(3rem, 8vw, 4.5rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      color: var(--cream);
+    }
+
+    & .tagline {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.25em;
+      color: var(--cream-dim);
+      margin-top: 0.75rem;
+    }
+  }
+
+  /* -- COMPOSER -- */
+  .composer {
+    background: var(--surface);
+    border: 1px solid rgba(244,239,232,0.06);
+    border-radius: 6px;
+    padding: 1.5rem;
+    margin-bottom: 2.5rem;
+    transition: border-color 0.3s ease;
+
+    &:focus-within { border-color: rgba(196,87,58,0.4); }
+
+    & .composer-top {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      align-items: flex-start;
+    }
+
+    & .avatar-picker {
+      flex-shrink: 0;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 2px dashed rgba(244,239,232,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      overflow: hidden;
+      transition: border-color 0.2s;
+      position: relative;
+      background: var(--bg);
+
+      &:hover { border-color: var(--accent); }
+      &.has-image { border-style: solid; border-color: var(--accent); }
+
+      & img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      & .avatar-placeholder {
+        color: var(--cream-dim);
+        font-size: 0.6rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        text-align: center;
+        line-height: 1.3;
+        opacity: 0.6;
+      }
+
+      & .avatar-remove {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        width: 18px;
+        height: 18px;
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        font-size: 11px;
+        line-height: 18px;
+        text-align: center;
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+
+    & .composer-fields {
+      flex: 1;
+      min-width: 0;
+    }
+
+    & .composer-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    & input, & textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid rgba(244,239,232,0.08);
+      border-radius: 4px;
+      color: var(--cream);
+      font-family: var(--sans);
+      font-size: 0.9rem;
+      padding: 0.65rem 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+
+      &::placeholder { color: var(--cream-dim); opacity: 0.5; }
+      &:focus { border-color: var(--accent); }
+    }
+
+    & input { flex: 1; }
+
+    & .char-count {
+      font-size: 0.75rem;
+      color: var(--cream-dim);
+      align-self: center;
+      min-width: 50px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+
+      &.warn { color: var(--accent); }
+      &.over { color: #e04040; }
+    }
+
+    & textarea {
+      resize: vertical;
+      min-height: 72px;
+      line-height: 1.55;
+    }
+
+    & .composer-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.85rem;
+    }
+
+    & .error-msg {
+      font-size: 0.8rem;
+      color: var(--accent-glow);
+    }
+
+    & button.submit-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 0.55rem 1.5rem;
+      font-family: var(--sans);
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+
+      &:hover:not(:disabled) { background: var(--accent-glow); }
+      &:active:not(:disabled) { transform: scale(0.97); }
+      &:disabled { opacity: 0.4; cursor: not-allowed; }
+    }
+  }
+
+  /* -- POSTS -- */
+  .feed-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    color: var(--cream-dim);
+    margin-bottom: 1.25rem;
+  }
+
+  .post {
+    background: var(--card);
+    color: var(--ink);
+    border-radius: 4px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 0.75rem;
+    position: relative;
+    animation: slideUp 0.35s ease-out both;
+    display: flex;
+    gap: 1rem;
+
+    &:nth-child(odd) { background: var(--card-alt); }
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: var(--accent);
+      border-radius: 4px 0 0 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    &:hover::before { opacity: 1; }
+
+    & .post-avatar {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: rgba(0,0,0,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+
+      & img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      & .initials {
+        font-family: var(--serif);
+        font-size: 1rem;
+        font-style: italic;
+        color: var(--ink-light);
+        text-transform: uppercase;
+      }
+    }
+
+    & .post-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    & .post-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.45rem;
+    }
+
+    & .post-author {
+      font-family: var(--serif);
+      font-size: 1.1rem;
+      font-style: italic;
+      color: var(--ink);
+    }
+
+    & .post-time {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--ink-light);
+    }
+
+    & .post-content {
+      font-size: 0.92rem;
+      line-height: 1.6;
+      color: var(--ink);
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .empty {
+    text-align: center;
+    padding: 4rem 1rem;
+    color: var(--cream-dim);
+    font-style: italic;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 3rem;
+    color: var(--cream-dim);
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .post:nth-child(1) { animation-delay: 0s; }
+  .post:nth-child(2) { animation-delay: 0.04s; }
+  .post:nth-child(3) { animation-delay: 0.08s; }
+  .post:nth-child(4) { animation-delay: 0.12s; }
+  .post:nth-child(5) { animation-delay: 0.16s; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="shell">
+
+    <header class="masthead">
+      <h1>the feed</h1>
+      <p class="tagline">Unfiltered &middot; Unmoderated &middot; Unsigned</p>
+    </header>
+
+    <section class="composer">
+      <div class="composer-top">
+
+        <!-- Avatar picker -->
+        <div
+          class="avatar-picker"
+          :class="{ 'has-image': avatarData }"
+          @click="!avatarData && $refs.fileInput.click()"
+        >
+          <img v-if="avatarData" :src="avatarData" alt="avatar" />
+          <span v-else class="avatar-placeholder">add<br>pic</span>
+          <button
+            v-if="avatarData"
+            class="avatar-remove"
+            @click.stop="avatarData = ''"
+            title="Remove"
+          >&times;</button>
+        </div>
+        <input
+          ref="fileInput"
+          type="file"
+          accept="image/png,image/jpeg,image/gif,image/webp"
+          hidden
+          @change="handleAvatar"
+        />
+
+        <div class="composer-fields">
+          <div class="composer-row">
+            <input
+              v-model="author"
+              type="text"
+              placeholder="your name"
+              maxlength="40"
+              @keydown.enter="$refs.contentBox.focus()"
+            />
+            <span
+              class="char-count"
+              :class="{ warn: content.length > 400, over: content.length > 500 }"
+            >{{ content.length }}/500</span>
+          </div>
+          <textarea
+            ref="contentBox"
+            v-model="content"
+            placeholder="what's on your mind?"
+            maxlength="500"
+            @keydown.ctrl.enter="submit"
+            @keydown.meta.enter="submit"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="composer-footer">
+        <span class="error-msg">{{ error }}</span>
+        <button class="submit-btn" :disabled="sending || !canSubmit" @click="submit">
+          {{ sending ? '...' : 'Post' }}
+        </button>
+      </div>
+    </section>
+
+    <div v-if="loadingPosts" class="loading">loading...</div>
+
+    <template v-else>
+      <p v-if="posts.length" class="feed-label">Latest ({{ posts.length }})</p>
+
+      <article v-for="post in posts" :key="post.id" class="post">
+        <div class="post-avatar">
+          <img v-if="post.avatar" :src="post.avatar" alt="" />
+          <span v-else class="initials">{{ initials(post.author) }}</span>
+        </div>
+        <div class="post-body">
+          <div class="post-header">
+            <span class="post-author">{{ post.author }}</span>
+            <span class="post-time">{{ ago(post.created_at) }}</span>
+          </div>
+          <div class="post-content">{{ post.content }}</div>
+        </div>
+      </article>
+
+      <div v-if="!posts.length" class="empty">
+        Nothing here yet. Be the first to post.
+      </div>
+    </template>
+
+  </div>
+</div>
+
+<script>
+const API = '/api/posts';
+const MAX_AVATAR_DIM = 128; // resize to 128x128 max
+
+const { createApp, ref, computed, onMounted } = Vue;
+
+createApp({
+  setup() {
+    const author = ref('');
+    const content = ref('');
+    const avatarData = ref('');
+    const error = ref('');
+    const sending = ref(false);
+    const posts = ref([]);
+    const loadingPosts = ref(true);
+
+    const canSubmit = computed(() =>
+      author.value.trim().length > 0 && content.value.trim().length > 0
+    );
+
+    // Resize image client-side before storing as base64
+    function handleAvatar(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Client-side guard: 2MB raw file max
+      if (file.size > 2 * 1024 * 1024) {
+        error.value = 'image too large (max 2MB)';
+        return;
+      }
+
+      const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+      if (!allowed.includes(file.type)) {
+        error.value = 'only png/jpeg/gif/webp allowed';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          // Downscale to MAX_AVATAR_DIM to keep base64 small
+          const canvas = document.createElement('canvas');
+          let w = img.width, h = img.height;
+          if (w > MAX_AVATAR_DIM || h > MAX_AVATAR_DIM) {
+            const scale = MAX_AVATAR_DIM / Math.max(w, h);
+            w = Math.round(w * scale);
+            h = Math.round(h * scale);
+          }
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          avatarData.value = canvas.toDataURL('image/jpeg', 0.8);
+          error.value = '';
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+
+      // Reset so same file can be re-selected
+      e.target.value = '';
+    }
+
+    async function fetchPosts() {
+      try {
+        const res = await fetch(API);
+        if (!res.ok) throw new Error('fetch failed');
+        posts.value = await res.json();
+      } catch (e) {
+        console.error(e);
+      } finally {
+        loadingPosts.value = false;
+      }
+    }
+
+    async function submit() {
+      if (!canSubmit.value || sending.value) return;
+      error.value = '';
+      sending.value = true;
+
+      try {
+        const res = await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            author: author.value.trim(),
+            avatar: avatarData.value,
+            content: content.value.trim(),
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          error.value = data.error || 'something went wrong';
+          return;
+        }
+
+        posts.value.unshift(data);
+        content.value = '';
+        // Keep avatar and author for quick follow-up posts
+      } catch (e) {
+        error.value = 'network error - is the server running?';
+      } finally {
+        sending.value = false;
+      }
+    }
+
+    function initials(name) {
+      const parts = name.split(/\s+/).filter(Boolean);
+      if (parts.length >= 2) return parts[0][0] + parts[1][0];
+      return name.slice(0, 2);
+    }
+
+    function ago(iso) {
+      const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+      if (diff < 60) return 'just now';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      return Math.floor(diff / 86400) + 'd ago';
+    }
+
+    onMounted(fetchPosts);
+
+    return {
+      author, content, avatarData, error, sending,
+      posts, loadingPosts, canSubmit,
+      submit, handleAvatar, initials, ago,
+    };
+  },
+}).mount('#app');
+</script>
+</body>
+</html>
