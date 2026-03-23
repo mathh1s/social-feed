@@ -27,6 +27,7 @@ type Post struct {
 	Author    string    `json:"author"`
 	Avatar    string    `json:"avatar"`
 	Content   string    `json:"content"`
+	Image     string    `json:"image"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -39,6 +40,7 @@ type CreatePostRequest struct {
 	Author  string `json:"author"`
 	Avatar  string `json:"avatar"`
 	Content string `json:"content"`
+	Image   string `json:"image"`
 }
 
 type ErrorResponse struct {
@@ -64,12 +66,15 @@ func initDB(path string) (*sql.DB, error) {
 			author     TEXT    NOT NULL,
 			avatar     TEXT    NOT NULL DEFAULT '',
 			content    TEXT    NOT NULL,
+			image      TEXT    NOT NULL DEFAULT '',
 			created_at TEXT    NOT NULL
 		)
 	`)
 	if err != nil {
 		return nil, err
 	}
+	// Migrate: add image column if it doesn't exist (for existing DBs)
+	_, _ = db.Exec("ALTER TABLE posts ADD COLUMN image TEXT NOT NULL DEFAULT ''")
 	_, _ = db.Exec("CREATE INDEX IF NOT EXISTS idx_posts_id ON posts(id DESC)")
 	return db, nil
 }
@@ -78,60 +83,12 @@ type Store struct {
 	db *sql.DB
 }
 
-func (s *Store) GetPage(beforeID, limit int) ([]Post, bool, error) {
-	var rows *sql.Rows
-	var err error
-	if beforeID > 0 {
-		rows, err = s.db.Query(
-			"SELECT id, author, avatar, content, created_at FROM posts WHERE id < ? ORDER BY id DESC LIMIT ?",
-			beforeID, limit+1,
-		)
-	} else {
-		rows, err = s.db.Query(
-			"SELECT id, author, avatar, content, created_at FROM posts ORDER BY id DESC LIMIT ?",
-			limit+1,
-		)
-	}
-	if err != nil {
-		return nil, false, err
-	}
-	defer rows.Close()
-
+func scanPosts(rows *sql.Rows) ([]Post, error) {
 	var posts []Post
 	for rows.Next() {
 		var p Post
 		var ts string
-		if err := rows.Scan(&p.ID, &p.Author, &p.Avatar, &p.Content, &ts); err != nil {
-			return nil, false, err
-		}
-		p.CreatedAt, _ = time.Parse(time.RFC3339, ts)
-		posts = append(posts, p)
-	}
-	if posts == nil {
-		posts = []Post{}
-	}
-	hasMore := len(posts) > limit
-	if hasMore {
-		posts = posts[:limit]
-	}
-	return posts, hasMore, rows.Err()
-}
-
-func (s *Store) GetNewSince(afterID int) ([]Post, error) {
-	rows, err := s.db.Query(
-		"SELECT id, author, avatar, content, created_at FROM posts WHERE id > ? ORDER BY id DESC LIMIT 50",
-		afterID,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var posts []Post
-	for rows.Next() {
-		var p Post
-		var ts string
-		if err := rows.Scan(&p.ID, &p.Author, &p.Avatar, &p.Content, &ts); err != nil {
+		if err := rows.Scan(&p.ID, &p.Author, &p.Avatar, &p.Content, &p.Image, &ts); err != nil {
 			return nil, err
 		}
 		p.CreatedAt, _ = time.Parse(time.RFC3339, ts)
@@ -143,27 +100,59 @@ func (s *Store) GetNewSince(afterID int) ([]Post, error) {
 	return posts, rows.Err()
 }
 
-func (s *Store) Add(author, avatar, content string) (Post, error) {
+func (s *Store) GetPage(beforeID, limit int) ([]Post, bool, error) {
+	var rows *sql.Rows
+	var err error
+	if beforeID > 0 {
+		rows, err = s.db.Query(
+			"SELECT id, author, avatar, content, image, created_at FROM posts WHERE id < ? ORDER BY id DESC LIMIT ?",
+			beforeID, limit+1,
+		)
+	} else {
+		rows, err = s.db.Query(
+			"SELECT id, author, avatar, content, image, created_at FROM posts ORDER BY id DESC LIMIT ?",
+			limit+1,
+		)
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	defer rows.Close()
+	posts, err := scanPosts(rows)
+	if err != nil {
+		return nil, false, err
+	}
+	hasMore := len(posts) > limit
+	if hasMore {
+		posts = posts[:limit]
+	}
+	return posts, hasMore, nil
+}
+
+func (s *Store) GetNewSince(afterID int) ([]Post, error) {
+	rows, err := s.db.Query(
+		"SELECT id, author, avatar, content, image, created_at FROM posts WHERE id > ? ORDER BY id DESC LIMIT 50",
+		afterID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanPosts(rows)
+}
+
+func (s *Store) Add(author, avatar, content, image string) (Post, error) {
 	now := time.Now().UTC()
 	ts := now.Format(time.RFC3339)
 	res, err := s.db.Exec(
-		"INSERT INTO posts (author, avatar, content, created_at) VALUES (?, ?, ?, ?)",
-		author, avatar, content, ts,
+		"INSERT INTO posts (author, avatar, content, image, created_at) VALUES (?, ?, ?, ?, ?)",
+		author, avatar, content, image, ts,
 	)
 	if err != nil {
 		return Post{}, err
 	}
 	id, _ := res.LastInsertId()
-	return Post{ID: int(id), Author: author, Avatar: avatar, Content: content, CreatedAt: now}, nil
-}
-
-func (s *Store) Delete(id int) (bool, error) {
-	res, err := s.db.Exec("DELETE FROM posts WHERE id = ?", id)
-	if err != nil {
-		return false, err
-	}
-	n, _ := res.RowsAffected()
-	return n > 0, nil
+	return Post{ID: int(id), Author: author, Avatar: avatar, Content: content, Image: image, CreatedAt: now}, nil
 }
 
 // --- Rate limiter ---
@@ -204,48 +193,53 @@ func (rl *RateLimiter) Allow(ip string) bool {
 const (
 	maxAuthorLen   = 40
 	maxContentLen  = 500
-	maxAvatarBytes = 150_000
-	maxBodyBytes   = 256_000
+	maxAvatarBytes = 150_000  // ~100KB decoded
+	maxImageBytes  = 700_000  // ~500KB decoded
+	maxBodyBytes   = 1_000_000
 	defaultLimit   = 20
 	maxLimit       = 50
 )
 
-var avatarPrefixRe = regexp.MustCompile(`^data:image/(png|jpeg|gif|webp);base64,`)
+var imageDataURIRe = regexp.MustCompile(`^data:image/(png|jpeg|gif|webp);base64,`)
 
 func sanitize(s string) string {
 	return strings.TrimSpace(s)
 }
 
-func validateAvatar(raw string) (string, string) {
+func validateDataURI(raw string, maxBytes int, label string) (string, string) {
 	if raw == "" {
 		return "", ""
 	}
-	if len(raw) > maxAvatarBytes {
-		return "", "avatar too large (max ~100KB)"
+	if len(raw) > maxBytes {
+		return "", fmt.Sprintf("%s too large", label)
 	}
-	if !avatarPrefixRe.MatchString(raw) {
-		return "", "avatar must be a base64 data URI (png/jpeg/gif/webp)"
+	if !imageDataURIRe.MatchString(raw) {
+		return "", fmt.Sprintf("%s must be a base64 data URI (png/jpeg/gif/webp)", label)
 	}
 	return raw, ""
 }
 
-func validatePost(req CreatePostRequest) (author, avatar, content, errMsg string) {
+func validatePost(req CreatePostRequest) (author, avatar, content, image, errMsg string) {
 	author = sanitize(req.Author)
 	content = sanitize(req.Content)
 	if author == "" || content == "" {
-		return "", "", "", "author and content are required"
+		return "", "", "", "", "author and content are required"
 	}
 	if utf8.RuneCountInString(author) > maxAuthorLen {
-		return "", "", "", fmt.Sprintf("author too long (max %d chars)", maxAuthorLen)
+		return "", "", "", "", fmt.Sprintf("author too long (max %d chars)", maxAuthorLen)
 	}
 	if utf8.RuneCountInString(content) > maxContentLen {
-		return "", "", "", fmt.Sprintf("content too long (max %d chars)", maxContentLen)
+		return "", "", "", "", fmt.Sprintf("content too long (max %d chars)", maxContentLen)
 	}
-	avatar, errMsg = validateAvatar(req.Avatar)
+	avatar, errMsg = validateDataURI(req.Avatar, maxAvatarBytes, "avatar")
 	if errMsg != "" {
-		return "", "", "", errMsg
+		return "", "", "", "", errMsg
 	}
-	return author, avatar, content, ""
+	image, errMsg = validateDataURI(req.Image, maxImageBytes, "image")
+	if errMsg != "" {
+		return "", "", "", "", errMsg
+	}
+	return author, avatar, content, image, ""
 }
 
 func queryInt(r *http.Request, key string, fallback int) int {
@@ -265,7 +259,7 @@ func queryInt(r *http.Request, key string, fallback int) int {
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
@@ -341,11 +335,8 @@ func main() {
 
 	store := &Store{db: db}
 	writeLimiter := NewRateLimiter(10, time.Minute)
-	deleteLimiter := NewRateLimiter(20, time.Minute)
 	mux := http.NewServeMux()
 
-	// GET /api/posts?before_id=N&limit=N
-	// POST /api/posts
 	mux.HandleFunc("/api/posts", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -374,12 +365,12 @@ func main() {
 				writeError(w, http.StatusBadRequest, "invalid JSON")
 				return
 			}
-			author, avatar, content, errMsg := validatePost(req)
+			author, avatar, content, image, errMsg := validatePost(req)
 			if errMsg != "" {
 				writeError(w, http.StatusUnprocessableEntity, errMsg)
 				return
 			}
-			post, err := store.Add(author, avatar, content)
+			post, err := store.Add(author, avatar, content, image)
 			if err != nil {
 				log.Printf("db write error: %v", err)
 				writeError(w, http.StatusInternalServerError, "failed to save post")
@@ -392,7 +383,6 @@ func main() {
 		}
 	})
 
-	// GET /api/posts/new?after_id=N
 	mux.HandleFunc("/api/posts/new", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -408,36 +398,6 @@ func main() {
 		writeJSON(w, http.StatusOK, posts)
 	})
 
-	// DELETE /api/posts/delete?id=N
-	mux.HandleFunc("/api/posts/delete", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodDelete {
-			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-			return
-		}
-		ip := clientIP(r)
-		if !deleteLimiter.Allow(ip) {
-			writeError(w, http.StatusTooManyRequests, "slow down")
-			return
-		}
-		id := queryInt(r, "id", 0)
-		if id <= 0 {
-			writeError(w, http.StatusBadRequest, "invalid post id")
-			return
-		}
-		found, err := store.Delete(id)
-		if err != nil {
-			log.Printf("db delete error: %v", err)
-			writeError(w, http.StatusInternalServerError, "failed to delete post")
-			return
-		}
-		if !found {
-			writeError(w, http.StatusNotFound, "post not found")
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]bool{"deleted": true})
-	})
-
-	// Serve frontend
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
@@ -452,8 +412,8 @@ func main() {
 	srv := &http.Server{
 		Addr:         addr,
 		Handler:      handler,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 20 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 

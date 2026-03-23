@@ -22,8 +22,6 @@
     --cream: #f4efe8;
     --cream-dim: #a89e91;
     --danger: #c43a3a;
-    --danger-glow: #e04f4f;
-    --success: #3a8c5a;
     --serif: 'Instrument Serif', 'Georgia', serif;
     --sans: 'DM Sans', system-ui, sans-serif;
     --grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
@@ -87,7 +85,6 @@
       font-weight: 400;
       letter-spacing: -0.02em;
       line-height: 1;
-      color: var(--cream);
     }
 
     & .tagline {
@@ -163,8 +160,6 @@
         border: 2px solid var(--surface);
         border-radius: 50%;
         font-size: 10px;
-        line-height: 12px;
-        text-align: center;
         cursor: pointer;
         padding: 0;
         display: flex;
@@ -183,7 +178,7 @@
       margin-bottom: 0.6rem;
     }
 
-    & input, & textarea {
+    & input[type="text"], & textarea {
       width: 100%;
       background: var(--bg);
       border: 1px solid rgba(244,239,232,0.08);
@@ -199,7 +194,7 @@
       &:focus { border-color: var(--accent); background: var(--surface-raised); }
     }
 
-    & input { flex: 1; }
+    & input[type="text"] { flex: 1; }
 
     & .char-count {
       font-size: 0.7rem;
@@ -221,6 +216,45 @@
       line-height: 1.55;
     }
 
+    /* -- IMAGE PREVIEW -- */
+    & .image-preview {
+      margin-top: 0.6rem;
+      position: relative;
+      display: inline-block;
+      max-width: 100%;
+
+      & img {
+        max-width: 100%;
+        max-height: 200px;
+        border-radius: 6px;
+        display: block;
+        object-fit: contain;
+        background: var(--bg);
+        border: 1px solid rgba(244,239,232,0.08);
+      }
+
+      & .image-remove {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 22px;
+        height: 22px;
+        background: rgba(14,12,11,0.8);
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        font-size: 13px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.15s, background 0.15s;
+        backdrop-filter: blur(4px);
+
+        &:hover { transform: scale(1.15); background: var(--danger); }
+      }
+    }
+
     & .composer-footer {
       display: flex;
       justify-content: space-between;
@@ -228,10 +262,34 @@
       margin-top: 0.75rem;
     }
 
+    & .composer-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
     & .error-msg {
       font-size: 0.78rem;
       color: var(--accent-glow);
-      max-width: 70%;
+    }
+
+    & .attach-btn {
+      background: none;
+      border: 1px solid rgba(244,239,232,0.1);
+      border-radius: 6px;
+      color: var(--cream-dim);
+      padding: 0.35rem 0.6rem;
+      font-size: 0.78rem;
+      font-family: var(--sans);
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+
+      &:hover { color: var(--cream); border-color: var(--accent); }
+
+      & svg { width: 14px; height: 14px; }
     }
 
     & button.submit-btn {
@@ -296,17 +354,9 @@
     position: relative;
     display: flex;
     gap: 0.85rem;
-    transition: transform 0.2s var(--ease-out-expo), opacity 0.3s;
+    transition: transform 0.2s var(--ease-out-expo);
 
-    &.entering {
-      animation: slideUp 0.4s var(--ease-out-expo) both;
-    }
-
-    &.deleting {
-      animation: fadeOut 0.3s ease-in both;
-      pointer-events: none;
-    }
-
+    &.entering { animation: slideUp 0.4s var(--ease-out-expo) both; }
     &:nth-child(even) { background: var(--card-alt); }
 
     &::before {
@@ -350,17 +400,9 @@
     & .post-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: baseline;
       margin-bottom: 0.35rem;
       gap: 0.5rem;
-    }
-
-    & .post-meta {
-      display: flex;
-      align-items: baseline;
-      gap: 0.5rem;
-      min-width: 0;
-      flex: 1;
     }
 
     & .post-author {
@@ -382,29 +424,6 @@
       flex-shrink: 0;
     }
 
-    & .post-delete {
-      flex-shrink: 0;
-      background: none;
-      border: none;
-      color: var(--ink-light);
-      cursor: pointer;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 0.7rem;
-      font-family: var(--sans);
-      opacity: 0;
-      transition: opacity 0.2s, color 0.15s, background 0.15s;
-
-      &:hover { color: var(--danger); background: rgba(196,58,58,0.08); }
-    }
-
-    &:hover .post-delete { opacity: 1; }
-
-    /* always visible on touch */
-    @media (hover: none) {
-      & .post-delete { opacity: 0.6; }
-    }
-
     & .post-content {
       font-size: 0.9rem;
       line-height: 1.6;
@@ -413,9 +432,47 @@
       word-break: break-word;
       overflow-wrap: anywhere;
     }
+
+    & .post-image {
+      margin-top: 0.6rem;
+
+      & img {
+        max-width: 100%;
+        max-height: 400px;
+        border-radius: 6px;
+        display: block;
+        object-fit: contain;
+        background: rgba(0,0,0,0.03);
+        cursor: pointer;
+        transition: transform 0.2s var(--ease-out-expo);
+
+        &:hover { transform: scale(1.01); }
+      }
+    }
   }
 
-  /* -- SKELETON LOADING -- */
+  /* -- LIGHTBOX -- */
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(0,0,0,0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+    animation: fadeIn 0.2s ease both;
+    backdrop-filter: blur(8px);
+
+    & img {
+      max-width: 95vw;
+      max-height: 95vh;
+      object-fit: contain;
+      border-radius: 4px;
+    }
+  }
+
+  /* -- SKELETON -- */
   .skeleton-post {
     background: var(--surface);
     border-radius: 6px;
@@ -425,27 +482,17 @@
     gap: 0.85rem;
     animation: pulse 1.5s ease-in-out infinite;
 
-    & .sk-avatar {
-      width: 36px; height: 36px;
-      border-radius: 50%;
-      background: rgba(244,239,232,0.06);
-    }
+    & .sk-avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(244,239,232,0.06); }
     & .sk-body { flex: 1; }
     & .sk-line {
-      height: 12px;
-      border-radius: 6px;
-      background: rgba(244,239,232,0.06);
-      margin-bottom: 8px;
+      height: 12px; border-radius: 6px; background: rgba(244,239,232,0.06); margin-bottom: 8px;
       &:first-child { width: 35%; }
       &:nth-child(2) { width: 90%; }
       &:nth-child(3) { width: 60%; }
     }
   }
 
-  /* -- LOAD MORE -- */
-  .load-more-trigger {
-    height: 1px;
-  }
+  .load-more-trigger { height: 1px; }
 
   .loading-more {
     text-align: center;
@@ -489,7 +536,7 @@
     bottom: 1.5rem;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 10000;
+    z-index: 10001;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -509,51 +556,19 @@
     pointer-events: auto;
 
     &.leaving { animation: toastOut 0.25s ease-in both; }
-    &.success { border-color: rgba(58,140,90,0.3); }
     &.error { border-color: rgba(196,58,58,0.3); }
   }
 
   /* -- ANIMATIONS -- */
-  @keyframes fadeDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeIn   { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse    { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  @keyframes spin     { to { transform: rotate(360deg); } }
+  @keyframes toastIn  { from { opacity: 0; transform: translateY(12px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes toastOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(8px) scale(0.95); } }
 
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  @keyframes fadeOut {
-    from { opacity: 1; transform: translateX(0) scale(1); }
-    to   { opacity: 0; transform: translateX(30px) scale(0.95); }
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50%      { opacity: 0.5; }
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  @keyframes toastIn {
-    from { opacity: 0; transform: translateY(12px) scale(0.95); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
-  }
-
-  @keyframes toastOut {
-    from { opacity: 1; transform: translateY(0) scale(1); }
-    to   { opacity: 0; transform: translateY(8px) scale(0.95); }
-  }
-
-  /* -- MOBILE TWEAKS -- */
   @media (max-width: 480px) {
     .composer { padding: 1rem; }
     .composer .composer-top { gap: 0.65rem; }
@@ -562,7 +577,6 @@
     .post .post-avatar { width: 32px; height: 32px; }
     .post .post-author { font-size: 0.95rem; }
     .post .post-content { font-size: 0.85rem; }
-    .post .post-delete { opacity: 0.5; }
   }
 </style>
 </head>
@@ -580,24 +594,18 @@
         <div
           class="avatar-picker"
           :class="{ 'has-image': avatarData }"
-          @click="!avatarData && $refs.fileInput.click()"
+          @click="!avatarData && $refs.avatarInput.click()"
         >
           <img v-if="avatarData" :src="avatarData" alt="avatar" />
           <span v-else class="avatar-placeholder">add<br>pic</span>
           <button
             v-if="avatarData"
             class="avatar-remove"
-            @click.stop="avatarData = ''"
+            @click.stop="clearAvatar"
             title="Remove"
           >&times;</button>
         </div>
-        <input
-          ref="fileInput"
-          type="file"
-          accept="image/png,image/jpeg,image/gif,image/webp"
-          hidden
-          @change="handleAvatar"
-        />
+        <input ref="avatarInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden @change="handleAvatar" />
 
         <div class="composer-fields">
           <div class="composer-row">
@@ -608,10 +616,7 @@
               maxlength="40"
               @keydown.enter="$refs.contentBox.focus()"
             />
-            <span
-              class="char-count"
-              :class="{ warn: content.length > 400, over: content.length > 500 }"
-            >{{ content.length }}/500</span>
+            <span class="char-count" :class="{ warn: content.length > 400, over: content.length > 500 }">{{ content.length }}/500</span>
           </div>
           <textarea
             ref="contentBox"
@@ -621,87 +626,85 @@
             @keydown.ctrl.enter="submit"
             @keydown.meta.enter="submit"
           ></textarea>
+
+          <!-- Image preview -->
+          <div v-if="imageData" class="image-preview">
+            <img :src="imageData" alt="attachment" />
+            <button class="image-remove" @click="imageData = ''" title="Remove">&times;</button>
+          </div>
         </div>
       </div>
 
       <div class="composer-footer">
-        <span class="error-msg">{{ error }}</span>
+        <div class="composer-left">
+          <button class="attach-btn" @click="$refs.imageInput.click()" title="Attach image">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+            image
+          </button>
+          <input ref="imageInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden @change="handleImage" />
+          <span class="error-msg">{{ error }}</span>
+        </div>
         <button class="submit-btn" :disabled="sending || !canSubmit" @click="submit">
           {{ sending ? '...' : 'Post' }}
         </button>
       </div>
     </section>
 
-    <!-- New posts banner -->
     <div v-if="pendingPosts.length" class="new-banner">
       <button @click="mergePending">
         {{ pendingPosts.length }} new post{{ pendingPosts.length > 1 ? 's' : '' }}
       </button>
     </div>
 
-    <!-- Skeleton loading -->
     <template v-if="initialLoading">
-      <div v-for="i in 4" :key="'sk-'+i" class="skeleton-post" :style="{ animationDelay: (i * 0.1) + 's' }">
+      <div v-for="i in 4" :key="'sk-'+i" class="skeleton-post" :style="{ animationDelay: (i*0.1)+'s' }">
         <div class="sk-avatar"></div>
-        <div class="sk-body">
-          <div class="sk-line"></div>
-          <div class="sk-line"></div>
-          <div class="sk-line"></div>
-        </div>
+        <div class="sk-body"><div class="sk-line"></div><div class="sk-line"></div><div class="sk-line"></div></div>
       </div>
     </template>
 
     <template v-else>
       <p v-if="posts.length" class="feed-label">Latest</p>
 
-      <article
-        v-for="post in posts"
-        :key="post.id"
-        class="post"
-        :class="{ entering: post._new, deleting: post._deleting }"
-      >
+      <article v-for="post in posts" :key="post.id" class="post" :class="{ entering: post._new }">
         <div class="post-avatar">
           <img v-if="post.avatar" :src="post.avatar" alt="" />
           <span v-else class="initials">{{ initials(post.author) }}</span>
         </div>
         <div class="post-body">
           <div class="post-header">
-            <div class="post-meta">
-              <span class="post-author">{{ post.author }}</span>
-              <span class="post-time">{{ post._ago }}</span>
-            </div>
-            <button class="post-delete" @click="deletePost(post)" title="Delete">&times;</button>
+            <span class="post-author">{{ post.author }}</span>
+            <span class="post-time">{{ post._ago }}</span>
           </div>
           <div class="post-content">{{ post.content }}</div>
+          <div v-if="post.image" class="post-image">
+            <img :src="post.image" alt="attached image" @click="lightboxSrc = post.image" />
+          </div>
         </div>
       </article>
 
-      <!-- Infinite scroll trigger -->
       <div ref="sentinel" class="load-more-trigger"></div>
 
       <div v-if="loadingMore" class="loading-more">
         <span class="spinner"></span> loading...
       </div>
 
-      <div v-if="!hasMore && posts.length > 5" class="end-of-feed">
-        end of feed
-      </div>
+      <div v-if="!hasMore && posts.length > 5" class="end-of-feed">end of feed</div>
 
       <div v-if="!posts.length && !pendingPosts.length" class="empty">
         Nothing here yet. Be the first to post.
       </div>
     </template>
+  </div>
 
+  <!-- Lightbox -->
+  <div v-if="lightboxSrc" class="lightbox" @click="lightboxSrc = ''">
+    <img :src="lightboxSrc" alt="" />
   </div>
 
   <!-- Toasts -->
   <div class="toast-container">
-    <div
-      v-for="t in toasts"
-      :key="t.id"
-      class="toast"
-      :class="[t.type, { leaving: t.leaving }]"
-    >{{ t.msg }}</div>
+    <div v-for="t in toasts" :key="t.id" class="toast" :class="[t.type, { leaving: t.leaving }]">{{ t.msg }}</div>
   </div>
 </div>
 
@@ -710,16 +713,18 @@ const API = '/api/posts';
 const POLL_INTERVAL = 5000;
 const TIMESTAMP_INTERVAL = 30000;
 const MAX_AVATAR_DIM = 128;
+const MAX_IMAGE_DIM = 800;
 const PAGE_SIZE = 20;
+const STORAGE_KEY = 'feed_user';
 
-const { createApp, ref, computed, onMounted, onUnmounted, nextTick, watch } = Vue;
+const { createApp, ref, computed, watch, onMounted, onUnmounted, nextTick } = Vue;
 
 createApp({
   setup() {
-    // --- State ---
     const author = ref('');
     const content = ref('');
     const avatarData = ref('');
+    const imageData = ref('');
     const error = ref('');
     const sending = ref(false);
     const posts = ref([]);
@@ -729,6 +734,7 @@ createApp({
     const hasMore = ref(true);
     const toasts = ref([]);
     const sentinel = ref(null);
+    const lightboxSrc = ref('');
 
     let pollTimer = null;
     let timestampTimer = null;
@@ -739,6 +745,30 @@ createApp({
       author.value.trim().length > 0 && content.value.trim().length > 0
     );
 
+    // --- localStorage persistence ---
+    function loadUser() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (data.author) author.value = data.author;
+        if (data.avatar) avatarData.value = data.avatar;
+      } catch (e) { /* ignore corrupt data */ }
+    }
+
+    function saveUser() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          author: author.value,
+          avatar: avatarData.value,
+        }));
+      } catch (e) { /* quota exceeded etc */ }
+    }
+
+    // Save whenever author or avatar changes
+    watch(author, saveUser);
+    watch(avatarData, saveUser);
+
     // --- Toasts ---
     function toast(msg, type = 'success') {
       const id = ++toastCounter;
@@ -746,9 +776,7 @@ createApp({
       setTimeout(() => {
         const t = toasts.value.find(x => x.id === id);
         if (t) t.leaving = true;
-        setTimeout(() => {
-          toasts.value = toasts.value.filter(x => x.id !== id);
-        }, 300);
+        setTimeout(() => { toasts.value = toasts.value.filter(x => x.id !== id); }, 300);
       }, 2500);
     }
 
@@ -771,7 +799,6 @@ createApp({
     function enrichPost(p, isNew = false) {
       p._ago = computeAgo(p.created_at);
       p._new = isNew;
-      p._deleting = false;
       return p;
     }
 
@@ -801,11 +828,8 @@ createApp({
         const data = await res.json();
         data.posts.forEach(p => posts.value.push(enrichPost(p)));
         hasMore.value = data.has_more;
-      } catch (e) {
-        console.error(e);
-      } finally {
-        loadingMore.value = false;
-      }
+      } catch (e) { console.error(e); }
+      finally { loadingMore.value = false; }
     }
 
     // --- Polling ---
@@ -817,8 +841,7 @@ createApp({
 
     async function poll() {
       try {
-        const afterId = highestId();
-        const res = await fetch(`${API}/new?after_id=${afterId}`);
+        const res = await fetch(`${API}/new?after_id=${highestId()}`);
         if (!res.ok) return;
         const data = await res.json();
         if (data.length) {
@@ -831,7 +854,6 @@ createApp({
     function mergePending() {
       posts.value = [...pendingPosts.value, ...posts.value];
       pendingPosts.value = [];
-      // Scroll to top smoothly
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -840,7 +862,6 @@ createApp({
       if (!canSubmit.value || sending.value) return;
       error.value = '';
       sending.value = true;
-
       try {
         const res = await fetch(API, {
           method: 'POST',
@@ -849,6 +870,7 @@ createApp({
             author: author.value.trim(),
             avatar: avatarData.value,
             content: content.value.trim(),
+            image: imageData.value,
           }),
         });
         const data = await res.json();
@@ -859,6 +881,7 @@ createApp({
         }
         posts.value.unshift(enrichPost(data, true));
         content.value = '';
+        imageData.value = '';
         toast('posted');
       } catch (e) {
         error.value = 'network error';
@@ -868,61 +891,65 @@ createApp({
       }
     }
 
-    // --- Delete ---
-    async function deletePost(post) {
-      post._deleting = true;
-      try {
-        const res = await fetch(`${API}/delete?id=${post.id}`, { method: 'DELETE' });
-        if (!res.ok) {
-          const data = await res.json();
-          post._deleting = false;
-          toast(data.error || 'failed to delete', 'error');
-          return;
-        }
-        // Wait for animation
-        setTimeout(() => {
-          posts.value = posts.value.filter(p => p.id !== post.id);
-          toast('deleted');
-        }, 300);
-      } catch (e) {
-        post._deleting = false;
-        toast('network error', 'error');
-      }
-    }
-
-    // --- Avatar ---
-    function handleAvatar(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      if (file.size > 2 * 1024 * 1024) {
-        error.value = 'image too large (max 2MB)';
-        return;
-      }
-      const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
-      if (!allowed.includes(file.type)) {
-        error.value = 'only png/jpeg/gif/webp';
-        return;
-      }
+    // --- Image processing (shared logic) ---
+    function processImage(file, maxDim, quality, callback) {
       const reader = new FileReader();
       reader.onload = () => {
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
           let w = img.width, h = img.height;
-          if (w > MAX_AVATAR_DIM || h > MAX_AVATAR_DIM) {
-            const scale = MAX_AVATAR_DIM / Math.max(w, h);
+          if (w > maxDim || h > maxDim) {
+            const scale = maxDim / Math.max(w, h);
             w = Math.round(w * scale);
             h = Math.round(h * scale);
           }
           canvas.width = w;
           canvas.height = h;
           canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-          avatarData.value = canvas.toDataURL('image/jpeg', 0.8);
-          error.value = '';
+          callback(canvas.toDataURL('image/jpeg', quality));
         };
         img.src = reader.result;
       };
       reader.readAsDataURL(file);
+    }
+
+    function validateFile(file, maxMB) {
+      if (file.size > maxMB * 1024 * 1024) {
+        error.value = `image too large (max ${maxMB}MB)`;
+        return false;
+      }
+      const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+      if (!allowed.includes(file.type)) {
+        error.value = 'only png/jpeg/gif/webp';
+        return false;
+      }
+      return true;
+    }
+
+    function handleAvatar(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (!validateFile(file, 2)) return;
+      processImage(file, MAX_AVATAR_DIM, 0.8, data => {
+        avatarData.value = data;
+        error.value = '';
+      });
+      e.target.value = '';
+    }
+
+    function clearAvatar() {
+      avatarData.value = '';
+    }
+
+    function handleImage(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (!validateFile(file, 5)) return;
+      processImage(file, MAX_IMAGE_DIM, 0.85, data => {
+        imageData.value = data;
+        error.value = '';
+      });
       e.target.value = '';
     }
 
@@ -935,9 +962,8 @@ createApp({
 
     // --- Lifecycle ---
     onMounted(async () => {
+      loadUser();
       await fetchInitial();
-
-      // Infinite scroll observer
       await nextTick();
       if (sentinel.value) {
         observer = new IntersectionObserver(
@@ -946,11 +972,7 @@ createApp({
         );
         observer.observe(sentinel.value);
       }
-
-      // Start polling
       pollTimer = setInterval(poll, POLL_INTERVAL);
-
-      // Live timestamps
       timestampTimer = setInterval(refreshTimestamps, TIMESTAMP_INTERVAL);
     });
 
@@ -961,10 +983,10 @@ createApp({
     });
 
     return {
-      author, content, avatarData, error, sending,
+      author, content, avatarData, imageData, error, sending,
       posts, pendingPosts, initialLoading, loadingMore, hasMore,
-      toasts, sentinel, canSubmit,
-      submit, deletePost, handleAvatar, mergePending, initials,
+      toasts, sentinel, lightboxSrc, canSubmit,
+      submit, handleAvatar, clearAvatar, handleImage, mergePending, initials,
     };
   },
 }).mount('#app');
