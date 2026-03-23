@@ -32,19 +32,21 @@ go run main.go
 ## Structure
 
 ```
-main.go            routes, server setup
-models.go          structs (Post, Request, Response types)
-store.go           SQLite init, migrations, queries
-preview.go         link preview fetching, OG tag parsing
-validate.go        input validation, rate limiter
-middleware.go      CORS, security headers, request logger
-helpers.go         JSON response, error, IP, env helpers
+main.go                      entrypoint (calls feed.Run())
+internal/feed/
+  server.go                  routes, server setup, Run()
+  models.go                  structs
+  store.go                   SQLite init, migrations, queries
+  preview.go                 link preview fetching, OG parsing
+  validate.go                input validation, rate limiter
+  middleware.go              CORS, security headers, logger
+  helpers.go                 JSON response, IP, env helpers
 static/
-  index.html       HTML template
-  style.css        all styles
-  app.js           Vue app, sounds, markdown
-  favicon.*        icons
-  site.webmanifest
+  index.html                 HTML template
+  style.css                  all styles
+  app.js                     Vue app, sounds, markdown
+  site.webmanifest           PWA manifest
+  images/logos/               favicons + app icons
 Dockerfile
 docker-compose.yml
 ```

@@ -1,4 +1,4 @@
-package main
+package feed
 
 import (
 	"fmt"
@@ -44,7 +44,7 @@ func matchOG(html string, re1, re2 *regexp.Regexp) string {
 	return ""
 }
 
-func fetchPreview(rawURL string) (*LinkPreview, error) {
+func fetchPreview(rawURL string) (*linkPreview, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
 		return nil, fmt.Errorf("invalid url")
@@ -80,7 +80,7 @@ func fetchPreview(rawURL string) (*LinkPreview, error) {
 		return nil, fmt.Errorf("no title found")
 	}
 
-	return &LinkPreview{
+	return &linkPreview{
 		URL:         rawURL,
 		Title:       title,
 		Description: matchOG(html, ogDescRe, ogDescRe2),

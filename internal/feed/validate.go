@@ -1,4 +1,4 @@
-package main
+package feed
 
 import (
 	"fmt"
@@ -8,8 +8,6 @@ import (
 	"time"
 	"unicode/utf8"
 )
-
-// --- Constants ---
 
 const (
 	maxAuthorLen   = 40
@@ -22,8 +20,6 @@ const (
 )
 
 var imageDataURIRe = regexp.MustCompile(`^data:image/(png|jpeg|gif|webp);base64,`)
-
-// --- Sanitization ---
 
 func sanitize(s string) string { return strings.TrimSpace(s) }
 
@@ -40,7 +36,7 @@ func validateDataURI(raw string, maxBytes int, label string) (string, string) {
 	return raw, ""
 }
 
-func validatePost(req CreatePostRequest) (author, avatar, content, image, errMsg string) {
+func validatePost(req createPostRequest) (author, avatar, content, image, errMsg string) {
 	author = sanitize(req.Author)
 	content = sanitize(req.Content)
 	if author == "" || content == "" {
@@ -63,20 +59,18 @@ func validatePost(req CreatePostRequest) (author, avatar, content, image, errMsg
 	return author, avatar, content, image, ""
 }
 
-// --- Rate limiter ---
-
-type RateLimiter struct {
+type rateLimiter struct {
 	mu       sync.Mutex
 	requests map[string][]time.Time
 	limit    int
 	window   time.Duration
 }
 
-func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
-	return &RateLimiter{requests: make(map[string][]time.Time), limit: limit, window: window}
+func newRateLimiter(limit int, window time.Duration) *rateLimiter {
+	return &rateLimiter{requests: make(map[string][]time.Time), limit: limit, window: window}
 }
 
-func (rl *RateLimiter) Allow(ip string) bool {
+func (rl *rateLimiter) allow(ip string) bool {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 	now := time.Now()

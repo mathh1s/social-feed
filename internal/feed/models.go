@@ -1,8 +1,8 @@
-package main
+package feed
 
 import "time"
 
-type Post struct {
+type post struct {
 	ID         int       `json:"id"`
 	ParentID   *int      `json:"parent_id"`
 	Author     string    `json:"author"`
@@ -14,12 +14,12 @@ type Post struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
-type PostsResponse struct {
-	Posts   []Post `json:"posts"`
+type postsResponse struct {
+	Posts   []post `json:"posts"`
 	HasMore bool   `json:"has_more"`
 }
 
-type CreatePostRequest struct {
+type createPostRequest struct {
 	ParentID *int   `json:"parent_id"`
 	Author   string `json:"author"`
 	Avatar   string `json:"avatar"`
@@ -27,7 +27,7 @@ type CreatePostRequest struct {
 	Image    string `json:"image"`
 }
 
-type LinkPreview struct {
+type linkPreview struct {
 	URL         string `json:"url"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
@@ -35,6 +35,6 @@ type LinkPreview struct {
 	SiteName    string `json:"site_name"`
 }
 
-type ErrorResponse struct {
+type errorResponse struct {
 	Error string `json:"error"`
 }

@@ -1,4 +1,4 @@
-package main
+package feed
 
 import (
 	"encoding/json"
@@ -15,7 +15,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 }
 
 func writeError(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, ErrorResponse{Error: msg})
+	writeJSON(w, status, errorResponse{Error: msg})
 }
 
 func clientIP(r *http.Request) string {
