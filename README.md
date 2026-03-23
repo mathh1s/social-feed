@@ -32,9 +32,20 @@ go run main.go
 ## Structure
 
 ```
-static/           web assets (html, favicons, manifest)
-main.go           server (api, db, link preview, static serving)
-Dockerfile        multi-stage build
+main.go            routes, server setup
+models.go          structs (Post, Request, Response types)
+store.go           SQLite init, migrations, queries
+preview.go         link preview fetching, OG tag parsing
+validate.go        input validation, rate limiter
+middleware.go      CORS, security headers, request logger
+helpers.go         JSON response, error, IP, env helpers
+static/
+  index.html       HTML template
+  style.css        all styles
+  app.js           Vue app, sounds, markdown
+  favicon.*        icons
+  site.webmanifest
+Dockerfile
 docker-compose.yml
 ```
 
