@@ -10,7 +10,7 @@ RUN apk add --no-cache ca-certificates
 WORKDIR /app
 COPY --from=build /bin/feed .
 COPY index.html .
-EXPOSE 8080
+EXPOSE 7291
 VOLUME ["/app/data"]
 ENV DB_PATH=/app/data/feed.db
 ENTRYPOINT ["./feed"]

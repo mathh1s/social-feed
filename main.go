@@ -308,7 +308,7 @@ func main() {
 	})
 
 	handler := corsMiddleware(securityHeaders(mux))
-	addr := envOr("ADDR", ":8080")
+	addr := envOr("ADDR", ":7291")
 	log.Printf("listening on %s (db: %s)", addr, dbPath)
 	log.Fatal(http.ListenAndServe(addr, handler))
 }

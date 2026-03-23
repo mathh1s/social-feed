@@ -2,11 +2,12 @@ services:
   feed:
     build: .
     ports:
-      - "8080:8080"
+      - "7291:7291"
     volumes:
       - feed-data:/app/data
     environment:
       - DB_PATH=/app/data/feed.db
+      - ADDR=:7291
     restart: unless-stopped
 
 volumes:
