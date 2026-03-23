@@ -398,6 +398,24 @@ func main() {
 		writeJSON(w, http.StatusOK, posts)
 	})
 
+	// Static assets (favicons, manifest)
+	staticFiles := map[string]string{
+		"/favicon.ico":                "favicon.ico",
+		"/favicon.svg":                "favicon.svg",
+		"/favicon-16x16.png":          "favicon-16x16.png",
+		"/favicon-32x32.png":          "favicon-32x32.png",
+		"/apple-touch-icon.png":       "apple-touch-icon.png",
+		"/android-chrome-192x192.png": "android-chrome-192x192.png",
+		"/android-chrome-512x512.png": "android-chrome-512x512.png",
+		"/site.webmanifest":           "site.webmanifest",
+	}
+	for path, file := range staticFiles {
+		f := file
+		mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, f)
+		})
+	}
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
