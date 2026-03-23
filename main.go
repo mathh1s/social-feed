@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"html"
 	"log"
 	"net/http"
 	"os"
@@ -214,7 +213,7 @@ const (
 var avatarPrefixRe = regexp.MustCompile(`^data:image/(png|jpeg|gif|webp);base64,`)
 
 func sanitize(s string) string {
-	return html.EscapeString(strings.TrimSpace(s))
+	return strings.TrimSpace(s)
 }
 
 func validateAvatar(raw string) (string, string) {
