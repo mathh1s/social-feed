@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -8,9 +9,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 	"unicode/utf8"
 
@@ -25,6 +29,11 @@ type Post struct {
 	Avatar    string    `json:"avatar"`
 	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type PostsResponse struct {
+	Posts   []Post `json:"posts"`
+	HasMore bool   `json:"has_more"`
 }
 
 type CreatePostRequest struct {
@@ -47,6 +56,9 @@ func initDB(path string) (*sql.DB, error) {
 	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
 		return nil, err
 	}
+	if _, err := db.Exec("PRAGMA busy_timeout=5000"); err != nil {
+		return nil, err
+	}
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS posts (
 			id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,16 +68,60 @@ func initDB(path string) (*sql.DB, error) {
 			created_at TEXT    NOT NULL
 		)
 	`)
-	return db, err
+	if err != nil {
+		return nil, err
+	}
+	_, _ = db.Exec("CREATE INDEX IF NOT EXISTS idx_posts_id ON posts(id DESC)")
+	return db, nil
 }
 
 type Store struct {
 	db *sql.DB
 }
 
-func (s *Store) GetAll() ([]Post, error) {
+func (s *Store) GetPage(beforeID, limit int) ([]Post, bool, error) {
+	var rows *sql.Rows
+	var err error
+	if beforeID > 0 {
+		rows, err = s.db.Query(
+			"SELECT id, author, avatar, content, created_at FROM posts WHERE id < ? ORDER BY id DESC LIMIT ?",
+			beforeID, limit+1,
+		)
+	} else {
+		rows, err = s.db.Query(
+			"SELECT id, author, avatar, content, created_at FROM posts ORDER BY id DESC LIMIT ?",
+			limit+1,
+		)
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	defer rows.Close()
+
+	var posts []Post
+	for rows.Next() {
+		var p Post
+		var ts string
+		if err := rows.Scan(&p.ID, &p.Author, &p.Avatar, &p.Content, &ts); err != nil {
+			return nil, false, err
+		}
+		p.CreatedAt, _ = time.Parse(time.RFC3339, ts)
+		posts = append(posts, p)
+	}
+	if posts == nil {
+		posts = []Post{}
+	}
+	hasMore := len(posts) > limit
+	if hasMore {
+		posts = posts[:limit]
+	}
+	return posts, hasMore, rows.Err()
+}
+
+func (s *Store) GetNewSince(afterID int) ([]Post, error) {
 	rows, err := s.db.Query(
-		"SELECT id, author, avatar, content, created_at FROM posts ORDER BY id DESC LIMIT 200",
+		"SELECT id, author, avatar, content, created_at FROM posts WHERE id > ? ORDER BY id DESC LIMIT 50",
+		afterID,
 	)
 	if err != nil {
 		return nil, err
@@ -99,13 +155,16 @@ func (s *Store) Add(author, avatar, content string) (Post, error) {
 		return Post{}, err
 	}
 	id, _ := res.LastInsertId()
-	return Post{
-		ID:        int(id),
-		Author:    author,
-		Avatar:    avatar,
-		Content:   content,
-		CreatedAt: now,
-	}, nil
+	return Post{ID: int(id), Author: author, Avatar: avatar, Content: content, CreatedAt: now}, nil
+}
+
+func (s *Store) Delete(id int) (bool, error) {
+	res, err := s.db.Exec("DELETE FROM posts WHERE id = ?", id)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
 }
 
 // --- Rate limiter ---
@@ -118,11 +177,7 @@ type RateLimiter struct {
 }
 
 func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
-	return &RateLimiter{
-		requests: make(map[string][]time.Time),
-		limit:    limit,
-		window:   window,
-	}
+	return &RateLimiter{requests: make(map[string][]time.Time), limit: limit, window: window}
 }
 
 func (rl *RateLimiter) Allow(ip string) bool {
@@ -152,14 +207,14 @@ const (
 	maxContentLen  = 500
 	maxAvatarBytes = 150_000
 	maxBodyBytes   = 256_000
+	defaultLimit   = 20
+	maxLimit       = 50
 )
 
 var avatarPrefixRe = regexp.MustCompile(`^data:image/(png|jpeg|gif|webp);base64,`)
 
 func sanitize(s string) string {
-	s = strings.TrimSpace(s)
-	s = html.EscapeString(s)
-	return s
+	return html.EscapeString(strings.TrimSpace(s))
 }
 
 func validateAvatar(raw string) (string, string) {
@@ -194,12 +249,24 @@ func validatePost(req CreatePostRequest) (author, avatar, content, errMsg string
 	return author, avatar, content, ""
 }
 
+func queryInt(r *http.Request, key string, fallback int) int {
+	v := r.URL.Query().Get(key)
+	if v == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 0 {
+		return fallback
+	}
+	return n
+}
+
 // --- Middleware ---
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
@@ -216,6 +283,27 @@ func securityHeaders(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+type statusCapture struct {
+	http.ResponseWriter
+	code int
+}
+
+func (s *statusCapture) WriteHeader(code int) {
+	s.code = code
+	s.ResponseWriter.WriteHeader(code)
+}
+
+func requestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		sw := &statusCapture{ResponseWriter: w, code: 200}
+		next.ServeHTTP(sw, r)
+		log.Printf("%s %s %d %s", r.Method, r.URL.RequestURI(), sw.code, time.Since(start).Round(time.Microsecond))
+	})
+}
+
+// --- Helpers ---
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -242,6 +330,8 @@ func envOr(key, fallback string) string {
 	return fallback
 }
 
+// --- Main ---
+
 func main() {
 	dbPath := envOr("DB_PATH", "feed.db")
 	db, err := initDB(dbPath)
@@ -251,40 +341,45 @@ func main() {
 	defer db.Close()
 
 	store := &Store{db: db}
-	limiter := NewRateLimiter(10, time.Minute)
+	writeLimiter := NewRateLimiter(10, time.Minute)
+	deleteLimiter := NewRateLimiter(20, time.Minute)
 	mux := http.NewServeMux()
 
+	// GET /api/posts?before_id=N&limit=N
+	// POST /api/posts
 	mux.HandleFunc("/api/posts", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			posts, err := store.GetAll()
+			beforeID := queryInt(r, "before_id", 0)
+			limit := queryInt(r, "limit", defaultLimit)
+			if limit > maxLimit {
+				limit = maxLimit
+			}
+			posts, hasMore, err := store.GetPage(beforeID, limit)
 			if err != nil {
 				log.Printf("db read error: %v", err)
 				writeError(w, http.StatusInternalServerError, "failed to load posts")
 				return
 			}
-			writeJSON(w, http.StatusOK, posts)
+			writeJSON(w, http.StatusOK, PostsResponse{Posts: posts, HasMore: hasMore})
 
 		case http.MethodPost:
 			ip := clientIP(r)
-			if !limiter.Allow(ip) {
+			if !writeLimiter.Allow(ip) {
 				writeError(w, http.StatusTooManyRequests, "slow down, max 10 posts per minute")
 				return
 			}
 			r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
-
 			var req CreatePostRequest
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				writeError(w, http.StatusBadRequest, "invalid JSON")
 				return
 			}
-
 			author, avatar, content, errMsg := validatePost(req)
 			if errMsg != "" {
 				writeError(w, http.StatusUnprocessableEntity, errMsg)
 				return
 			}
-
 			post, err := store.Add(author, avatar, content)
 			if err != nil {
 				log.Printf("db write error: %v", err)
@@ -298,7 +393,52 @@ func main() {
 		}
 	})
 
-	// Serve frontend at root
+	// GET /api/posts/new?after_id=N
+	mux.HandleFunc("/api/posts/new", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		afterID := queryInt(r, "after_id", 0)
+		posts, err := store.GetNewSince(afterID)
+		if err != nil {
+			log.Printf("db read error: %v", err)
+			writeError(w, http.StatusInternalServerError, "failed to load posts")
+			return
+		}
+		writeJSON(w, http.StatusOK, posts)
+	})
+
+	// DELETE /api/posts/delete?id=N
+	mux.HandleFunc("/api/posts/delete", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		ip := clientIP(r)
+		if !deleteLimiter.Allow(ip) {
+			writeError(w, http.StatusTooManyRequests, "slow down")
+			return
+		}
+		id := queryInt(r, "id", 0)
+		if id <= 0 {
+			writeError(w, http.StatusBadRequest, "invalid post id")
+			return
+		}
+		found, err := store.Delete(id)
+		if err != nil {
+			log.Printf("db delete error: %v", err)
+			writeError(w, http.StatusInternalServerError, "failed to delete post")
+			return
+		}
+		if !found {
+			writeError(w, http.StatusNotFound, "post not found")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"deleted": true})
+	})
+
+	// Serve frontend
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
@@ -307,8 +447,32 @@ func main() {
 		http.ServeFile(w, r, "index.html")
 	})
 
-	handler := corsMiddleware(securityHeaders(mux))
+	handler := requestLogger(corsMiddleware(securityHeaders(mux)))
 	addr := envOr("ADDR", ":7291")
+
+	srv := &http.Server{
+		Addr:         addr,
+		Handler:      handler,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+		<-sig
+		log.Println("shutting down...")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Printf("shutdown error: %v", err)
+		}
+	}()
+
 	log.Printf("listening on %s (db: %s)", addr, dbPath)
-	log.Fatal(http.ListenAndServe(addr, handler))
+	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+		log.Fatalf("server error: %v", err)
+	}
+	log.Println("stopped")
 }

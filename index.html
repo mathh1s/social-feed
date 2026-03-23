@@ -11,27 +11,34 @@
   :root {
     --bg: #0e0c0b;
     --surface: #1a1714;
+    --surface-raised: #211d19;
     --card: #f4efe8;
-    --card-alt: #e8e0d4;
+    --card-alt: #ebe4da;
     --ink: #0e0c0b;
     --ink-light: #5a5349;
     --accent: #c4573a;
     --accent-glow: #e0714f;
+    --accent-soft: rgba(196,87,58,0.12);
     --cream: #f4efe8;
     --cream-dim: #a89e91;
+    --danger: #c43a3a;
+    --danger-glow: #e04f4f;
+    --success: #3a8c5a;
     --serif: 'Instrument Serif', 'Georgia', serif;
     --sans: 'DM Sans', system-ui, sans-serif;
     --grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-  html { font-size: 16px; }
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
 
   body {
     background: var(--bg);
     color: var(--cream);
     font-family: var(--sans);
     min-height: 100vh;
+    min-height: 100dvh;
     overflow-x: hidden;
 
     &::before {
@@ -48,16 +55,20 @@
   .shell {
     max-width: 620px;
     margin: 0 auto;
-    padding: 2rem 1.25rem 6rem;
+    padding: 1.5rem 1rem 6rem;
+  }
+  @media (min-width: 640px) {
+    .shell { padding: 2rem 1.25rem 6rem; }
   }
 
   /* -- MASTHEAD -- */
   .masthead {
     text-align: center;
-    padding: 3.5rem 0 2.5rem;
+    padding: 2.5rem 0 2rem;
     border-bottom: 1px solid rgba(244,239,232,0.08);
-    margin-bottom: 2.5rem;
+    margin-bottom: 2rem;
     position: relative;
+    animation: fadeDown 0.6s var(--ease-out-expo) both;
 
     &::after {
       content: '';
@@ -72,7 +83,7 @@
 
     & h1 {
       font-family: var(--serif);
-      font-size: clamp(3rem, 8vw, 4.5rem);
+      font-size: clamp(2.6rem, 8vw, 4.5rem);
       font-weight: 400;
       letter-spacing: -0.02em;
       line-height: 1;
@@ -80,11 +91,11 @@
     }
 
     & .tagline {
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.25em;
       color: var(--cream-dim);
-      margin-top: 0.75rem;
+      margin-top: 0.6rem;
     }
   }
 
@@ -92,24 +103,28 @@
   .composer {
     background: var(--surface);
     border: 1px solid rgba(244,239,232,0.06);
-    border-radius: 6px;
-    padding: 1.5rem;
-    margin-bottom: 2.5rem;
-    transition: border-color 0.3s ease;
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 2rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    animation: fadeDown 0.6s var(--ease-out-expo) 0.1s both;
 
-    &:focus-within { border-color: rgba(196,87,58,0.4); }
+    &:focus-within {
+      border-color: rgba(196,87,58,0.35);
+      box-shadow: 0 0 0 3px rgba(196,87,58,0.06);
+    }
 
     & .composer-top {
       display: flex;
-      gap: 1rem;
-      margin-bottom: 1rem;
+      gap: 0.85rem;
+      margin-bottom: 0.85rem;
       align-items: flex-start;
     }
 
     & .avatar-picker {
       flex-shrink: 0;
-      width: 52px;
-      height: 52px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
       border: 2px dashed rgba(244,239,232,0.15);
       display: flex;
@@ -117,94 +132,92 @@
       justify-content: center;
       cursor: pointer;
       overflow: hidden;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, transform 0.15s;
       position: relative;
       background: var(--bg);
 
-      &:hover { border-color: var(--accent); }
+      &:hover { border-color: var(--accent); transform: scale(1.04); }
+      &:active { transform: scale(0.96); }
       &.has-image { border-style: solid; border-color: var(--accent); }
 
-      & img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
+      & img { width: 100%; height: 100%; object-fit: cover; }
 
       & .avatar-placeholder {
         color: var(--cream-dim);
-        font-size: 0.6rem;
+        font-size: 0.55rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
         text-align: center;
         line-height: 1.3;
-        opacity: 0.6;
+        opacity: 0.5;
       }
 
       & .avatar-remove {
         position: absolute;
-        top: -4px;
-        right: -4px;
-        width: 18px;
-        height: 18px;
-        background: var(--accent);
+        top: -3px;
+        right: -3px;
+        width: 16px;
+        height: 16px;
+        background: var(--danger);
         color: #fff;
-        border: none;
+        border: 2px solid var(--surface);
         border-radius: 50%;
-        font-size: 11px;
-        line-height: 18px;
+        font-size: 10px;
+        line-height: 12px;
         text-align: center;
         cursor: pointer;
         padding: 0;
         display: flex;
         align-items: center;
         justify-content: center;
+        transition: transform 0.15s;
+        &:hover { transform: scale(1.2); }
       }
     }
 
-    & .composer-fields {
-      flex: 1;
-      min-width: 0;
-    }
+    & .composer-fields { flex: 1; min-width: 0; }
 
     & .composer-row {
       display: flex;
-      gap: 0.75rem;
-      margin-bottom: 0.75rem;
+      gap: 0.6rem;
+      margin-bottom: 0.6rem;
     }
 
     & input, & textarea {
       width: 100%;
       background: var(--bg);
       border: 1px solid rgba(244,239,232,0.08);
-      border-radius: 4px;
+      border-radius: 6px;
       color: var(--cream);
       font-family: var(--sans);
-      font-size: 0.9rem;
-      padding: 0.65rem 0.85rem;
+      font-size: 0.88rem;
+      padding: 0.6rem 0.75rem;
       outline: none;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, background 0.2s;
 
-      &::placeholder { color: var(--cream-dim); opacity: 0.5; }
-      &:focus { border-color: var(--accent); }
+      &::placeholder { color: var(--cream-dim); opacity: 0.45; }
+      &:focus { border-color: var(--accent); background: var(--surface-raised); }
     }
 
     & input { flex: 1; }
 
     & .char-count {
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       color: var(--cream-dim);
       align-self: center;
-      min-width: 50px;
+      min-width: 48px;
       text-align: right;
       font-variant-numeric: tabular-nums;
+      opacity: 0.7;
+      transition: color 0.2s, opacity 0.2s;
 
-      &.warn { color: var(--accent); }
-      &.over { color: #e04040; }
+      &.warn { color: var(--accent); opacity: 1; }
+      &.over { color: var(--danger); opacity: 1; }
     }
 
     & textarea {
       resize: vertical;
-      min-height: 72px;
+      min-height: 68px;
       line-height: 1.55;
     }
 
@@ -212,55 +225,89 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-top: 0.85rem;
+      margin-top: 0.75rem;
     }
 
     & .error-msg {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       color: var(--accent-glow);
+      max-width: 70%;
     }
 
     & button.submit-btn {
       background: var(--accent);
       color: #fff;
       border: none;
-      border-radius: 4px;
-      padding: 0.55rem 1.5rem;
+      border-radius: 6px;
+      padding: 0.5rem 1.4rem;
       font-family: var(--sans);
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.1em;
       cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
+      transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
 
-      &:hover:not(:disabled) { background: var(--accent-glow); }
-      &:active:not(:disabled) { transform: scale(0.97); }
-      &:disabled { opacity: 0.4; cursor: not-allowed; }
+      &:hover:not(:disabled) { background: var(--accent-glow); box-shadow: 0 2px 12px rgba(196,87,58,0.3); }
+      &:active:not(:disabled) { transform: scale(0.96); }
+      &:disabled { opacity: 0.35; cursor: not-allowed; }
     }
   }
 
-  /* -- POSTS -- */
+  /* -- NEW POSTS BANNER -- */
+  .new-banner {
+    text-align: center;
+    margin-bottom: 1rem;
+    animation: slideDown 0.35s var(--ease-out-expo) both;
+
+    & button {
+      background: var(--accent-soft);
+      color: var(--accent-glow);
+      border: 1px solid rgba(196,87,58,0.2);
+      border-radius: 20px;
+      padding: 0.4rem 1.2rem;
+      font-family: var(--sans);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+
+      &:hover { background: rgba(196,87,58,0.2); }
+      &:active { transform: scale(0.96); }
+    }
+  }
+
+  /* -- FEED -- */
   .feed-label {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     text-transform: uppercase;
     letter-spacing: 0.3em;
     color: var(--cream-dim);
-    margin-bottom: 1.25rem;
+    margin-bottom: 1rem;
+    opacity: 0.7;
   }
 
   .post {
     background: var(--card);
     color: var(--ink);
-    border-radius: 4px;
-    padding: 1.25rem 1.5rem;
-    margin-bottom: 0.75rem;
+    border-radius: 6px;
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 0.6rem;
     position: relative;
-    animation: slideUp 0.35s ease-out both;
     display: flex;
-    gap: 1rem;
+    gap: 0.85rem;
+    transition: transform 0.2s var(--ease-out-expo), opacity 0.3s;
 
-    &:nth-child(odd) { background: var(--card-alt); }
+    &.entering {
+      animation: slideUp 0.4s var(--ease-out-expo) both;
+    }
+
+    &.deleting {
+      animation: fadeOut 0.3s ease-in both;
+      pointer-events: none;
+    }
+
+    &:nth-child(even) { background: var(--card-alt); }
 
     &::before {
       content: '';
@@ -268,16 +315,17 @@
       left: 0; top: 0; bottom: 0;
       width: 3px;
       background: var(--accent);
-      border-radius: 4px 0 0 4px;
+      border-radius: 6px 0 0 6px;
       opacity: 0;
-      transition: opacity 0.2s;
+      transition: opacity 0.25s;
     }
     &:hover::before { opacity: 1; }
+    &:hover { transform: translateX(2px); }
 
     & .post-avatar {
       flex-shrink: 0;
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
       overflow: hidden;
       background: rgba(0,0,0,0.06);
@@ -286,49 +334,79 @@
       justify-content: center;
       margin-top: 2px;
 
-      & img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
+      & img { width: 100%; height: 100%; object-fit: cover; }
 
       & .initials {
         font-family: var(--serif);
-        font-size: 1rem;
+        font-size: 0.9rem;
         font-style: italic;
         color: var(--ink-light);
         text-transform: uppercase;
       }
     }
 
-    & .post-body {
-      flex: 1;
-      min-width: 0;
-    }
+    & .post-body { flex: 1; min-width: 0; }
 
     & .post-header {
       display: flex;
       justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.35rem;
+      gap: 0.5rem;
+    }
+
+    & .post-meta {
+      display: flex;
       align-items: baseline;
-      margin-bottom: 0.45rem;
+      gap: 0.5rem;
+      min-width: 0;
+      flex: 1;
     }
 
     & .post-author {
       font-family: var(--serif);
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-style: italic;
       color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     & .post-time {
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       text-transform: uppercase;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.1em;
       color: var(--ink-light);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    & .post-delete {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      color: var(--ink-light);
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-family: var(--sans);
+      opacity: 0;
+      transition: opacity 0.2s, color 0.15s, background 0.15s;
+
+      &:hover { color: var(--danger); background: rgba(196,58,58,0.08); }
+    }
+
+    &:hover .post-delete { opacity: 1; }
+
+    /* always visible on touch */
+    @media (hover: none) {
+      & .post-delete { opacity: 0.6; }
     }
 
     & .post-content {
-      font-size: 0.92rem;
+      font-size: 0.9rem;
       line-height: 1.6;
       color: var(--ink);
       white-space: pre-wrap;
@@ -337,29 +415,155 @@
     }
   }
 
+  /* -- SKELETON LOADING -- */
+  .skeleton-post {
+    background: var(--surface);
+    border-radius: 6px;
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 0.6rem;
+    display: flex;
+    gap: 0.85rem;
+    animation: pulse 1.5s ease-in-out infinite;
+
+    & .sk-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: rgba(244,239,232,0.06);
+    }
+    & .sk-body { flex: 1; }
+    & .sk-line {
+      height: 12px;
+      border-radius: 6px;
+      background: rgba(244,239,232,0.06);
+      margin-bottom: 8px;
+      &:first-child { width: 35%; }
+      &:nth-child(2) { width: 90%; }
+      &:nth-child(3) { width: 60%; }
+    }
+  }
+
+  /* -- LOAD MORE -- */
+  .load-more-trigger {
+    height: 1px;
+  }
+
+  .loading-more {
+    text-align: center;
+    padding: 1.5rem 0;
+    color: var(--cream-dim);
+    font-size: 0.8rem;
+
+    & .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid rgba(244,239,232,0.15);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 0.5rem;
+    }
+  }
+
+  .end-of-feed {
+    text-align: center;
+    padding: 2rem 0 1rem;
+    color: var(--cream-dim);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    opacity: 0.5;
+  }
+
   .empty {
     text-align: center;
     padding: 4rem 1rem;
     color: var(--cream-dim);
     font-style: italic;
+    animation: fadeDown 0.5s var(--ease-out-expo) both;
   }
 
-  .loading {
-    text-align: center;
-    padding: 3rem;
-    color: var(--cream-dim);
+  /* -- TOAST -- */
+  .toast-container {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+    pointer-events: none;
   }
 
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(12px); }
+  .toast {
+    background: var(--surface-raised);
+    color: var(--cream);
+    border: 1px solid rgba(244,239,232,0.1);
+    border-radius: 8px;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.82rem;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    animation: toastIn 0.35s var(--ease-out-expo) both;
+    pointer-events: auto;
+
+    &.leaving { animation: toastOut 0.25s ease-in both; }
+    &.success { border-color: rgba(58,140,90,0.3); }
+    &.error { border-color: rgba(196,58,58,0.3); }
+  }
+
+  /* -- ANIMATIONS -- */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-10px); }
     to   { opacity: 1; transform: translateY(0); }
   }
 
-  .post:nth-child(1) { animation-delay: 0s; }
-  .post:nth-child(2) { animation-delay: 0.04s; }
-  .post:nth-child(3) { animation-delay: 0.08s; }
-  .post:nth-child(4) { animation-delay: 0.12s; }
-  .post:nth-child(5) { animation-delay: 0.16s; }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeOut {
+    from { opacity: 1; transform: translateX(0) scale(1); }
+    to   { opacity: 0; transform: translateX(30px) scale(0.95); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.5; }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes toastOut {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to   { opacity: 0; transform: translateY(8px) scale(0.95); }
+  }
+
+  /* -- MOBILE TWEAKS -- */
+  @media (max-width: 480px) {
+    .composer { padding: 1rem; }
+    .composer .composer-top { gap: 0.65rem; }
+    .composer .avatar-picker { width: 42px; height: 42px; }
+    .post { padding: 1rem; gap: 0.7rem; }
+    .post .post-avatar { width: 32px; height: 32px; }
+    .post .post-author { font-size: 0.95rem; }
+    .post .post-content { font-size: 0.85rem; }
+    .post .post-delete { opacity: 0.5; }
+  }
 </style>
 </head>
 <body>
@@ -373,8 +577,6 @@
 
     <section class="composer">
       <div class="composer-top">
-
-        <!-- Avatar picker -->
         <div
           class="avatar-picker"
           :class="{ 'has-image': avatarData }"
@@ -430,75 +632,281 @@
       </div>
     </section>
 
-    <div v-if="loadingPosts" class="loading">loading...</div>
+    <!-- New posts banner -->
+    <div v-if="pendingPosts.length" class="new-banner">
+      <button @click="mergePending">
+        {{ pendingPosts.length }} new post{{ pendingPosts.length > 1 ? 's' : '' }}
+      </button>
+    </div>
+
+    <!-- Skeleton loading -->
+    <template v-if="initialLoading">
+      <div v-for="i in 4" :key="'sk-'+i" class="skeleton-post" :style="{ animationDelay: (i * 0.1) + 's' }">
+        <div class="sk-avatar"></div>
+        <div class="sk-body">
+          <div class="sk-line"></div>
+          <div class="sk-line"></div>
+          <div class="sk-line"></div>
+        </div>
+      </div>
+    </template>
 
     <template v-else>
-      <p v-if="posts.length" class="feed-label">Latest ({{ posts.length }})</p>
+      <p v-if="posts.length" class="feed-label">Latest</p>
 
-      <article v-for="post in posts" :key="post.id" class="post">
+      <article
+        v-for="post in posts"
+        :key="post.id"
+        class="post"
+        :class="{ entering: post._new, deleting: post._deleting }"
+      >
         <div class="post-avatar">
           <img v-if="post.avatar" :src="post.avatar" alt="" />
           <span v-else class="initials">{{ initials(post.author) }}</span>
         </div>
         <div class="post-body">
           <div class="post-header">
-            <span class="post-author">{{ post.author }}</span>
-            <span class="post-time">{{ ago(post.created_at) }}</span>
+            <div class="post-meta">
+              <span class="post-author">{{ post.author }}</span>
+              <span class="post-time">{{ post._ago }}</span>
+            </div>
+            <button class="post-delete" @click="deletePost(post)" title="Delete">&times;</button>
           </div>
           <div class="post-content">{{ post.content }}</div>
         </div>
       </article>
 
-      <div v-if="!posts.length" class="empty">
+      <!-- Infinite scroll trigger -->
+      <div ref="sentinel" class="load-more-trigger"></div>
+
+      <div v-if="loadingMore" class="loading-more">
+        <span class="spinner"></span> loading...
+      </div>
+
+      <div v-if="!hasMore && posts.length > 5" class="end-of-feed">
+        end of feed
+      </div>
+
+      <div v-if="!posts.length && !pendingPosts.length" class="empty">
         Nothing here yet. Be the first to post.
       </div>
     </template>
 
   </div>
+
+  <!-- Toasts -->
+  <div class="toast-container">
+    <div
+      v-for="t in toasts"
+      :key="t.id"
+      class="toast"
+      :class="[t.type, { leaving: t.leaving }]"
+    >{{ t.msg }}</div>
+  </div>
 </div>
 
 <script>
 const API = '/api/posts';
-const MAX_AVATAR_DIM = 128; // resize to 128x128 max
+const POLL_INTERVAL = 5000;
+const TIMESTAMP_INTERVAL = 30000;
+const MAX_AVATAR_DIM = 128;
+const PAGE_SIZE = 20;
 
-const { createApp, ref, computed, onMounted } = Vue;
+const { createApp, ref, computed, onMounted, onUnmounted, nextTick, watch } = Vue;
 
 createApp({
   setup() {
+    // --- State ---
     const author = ref('');
     const content = ref('');
     const avatarData = ref('');
     const error = ref('');
     const sending = ref(false);
     const posts = ref([]);
-    const loadingPosts = ref(true);
+    const pendingPosts = ref([]);
+    const initialLoading = ref(true);
+    const loadingMore = ref(false);
+    const hasMore = ref(true);
+    const toasts = ref([]);
+    const sentinel = ref(null);
+
+    let pollTimer = null;
+    let timestampTimer = null;
+    let observer = null;
+    let toastCounter = 0;
 
     const canSubmit = computed(() =>
       author.value.trim().length > 0 && content.value.trim().length > 0
     );
 
-    // Resize image client-side before storing as base64
+    // --- Toasts ---
+    function toast(msg, type = 'success') {
+      const id = ++toastCounter;
+      toasts.value.push({ id, msg, type, leaving: false });
+      setTimeout(() => {
+        const t = toasts.value.find(x => x.id === id);
+        if (t) t.leaving = true;
+        setTimeout(() => {
+          toasts.value = toasts.value.filter(x => x.id !== id);
+        }, 300);
+      }, 2500);
+    }
+
+    // --- Timestamps ---
+    function computeAgo(iso) {
+      const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+      if (diff < 10) return 'now';
+      if (diff < 60) return Math.floor(diff) + 's';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+      const d = Math.floor(diff / 86400);
+      if (d < 30) return d + 'd';
+      return Math.floor(d / 30) + 'mo';
+    }
+
+    function refreshTimestamps() {
+      posts.value.forEach(p => { p._ago = computeAgo(p.created_at); });
+    }
+
+    function enrichPost(p, isNew = false) {
+      p._ago = computeAgo(p.created_at);
+      p._new = isNew;
+      p._deleting = false;
+      return p;
+    }
+
+    // --- Fetch ---
+    async function fetchInitial() {
+      try {
+        const res = await fetch(`${API}?limit=${PAGE_SIZE}`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        posts.value = data.posts.map(p => enrichPost(p));
+        hasMore.value = data.has_more;
+      } catch (e) {
+        console.error(e);
+        toast('failed to load posts', 'error');
+      } finally {
+        initialLoading.value = false;
+      }
+    }
+
+    async function loadMore() {
+      if (loadingMore.value || !hasMore.value || !posts.value.length) return;
+      loadingMore.value = true;
+      const lastId = posts.value[posts.value.length - 1].id;
+      try {
+        const res = await fetch(`${API}?before_id=${lastId}&limit=${PAGE_SIZE}`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        data.posts.forEach(p => posts.value.push(enrichPost(p)));
+        hasMore.value = data.has_more;
+      } catch (e) {
+        console.error(e);
+      } finally {
+        loadingMore.value = false;
+      }
+    }
+
+    // --- Polling ---
+    function highestId() {
+      if (pendingPosts.value.length) return pendingPosts.value[0].id;
+      if (posts.value.length) return posts.value[0].id;
+      return 0;
+    }
+
+    async function poll() {
+      try {
+        const afterId = highestId();
+        const res = await fetch(`${API}/new?after_id=${afterId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.length) {
+          data.forEach(p => enrichPost(p, true));
+          pendingPosts.value = [...data, ...pendingPosts.value];
+        }
+      } catch (e) { /* silent */ }
+    }
+
+    function mergePending() {
+      posts.value = [...pendingPosts.value, ...posts.value];
+      pendingPosts.value = [];
+      // Scroll to top smoothly
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // --- Submit ---
+    async function submit() {
+      if (!canSubmit.value || sending.value) return;
+      error.value = '';
+      sending.value = true;
+
+      try {
+        const res = await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            author: author.value.trim(),
+            avatar: avatarData.value,
+            content: content.value.trim(),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          error.value = data.error || 'something went wrong';
+          toast(data.error || 'failed to post', 'error');
+          return;
+        }
+        posts.value.unshift(enrichPost(data, true));
+        content.value = '';
+        toast('posted');
+      } catch (e) {
+        error.value = 'network error';
+        toast('network error', 'error');
+      } finally {
+        sending.value = false;
+      }
+    }
+
+    // --- Delete ---
+    async function deletePost(post) {
+      post._deleting = true;
+      try {
+        const res = await fetch(`${API}/delete?id=${post.id}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const data = await res.json();
+          post._deleting = false;
+          toast(data.error || 'failed to delete', 'error');
+          return;
+        }
+        // Wait for animation
+        setTimeout(() => {
+          posts.value = posts.value.filter(p => p.id !== post.id);
+          toast('deleted');
+        }, 300);
+      } catch (e) {
+        post._deleting = false;
+        toast('network error', 'error');
+      }
+    }
+
+    // --- Avatar ---
     function handleAvatar(e) {
       const file = e.target.files[0];
       if (!file) return;
-
-      // Client-side guard: 2MB raw file max
       if (file.size > 2 * 1024 * 1024) {
         error.value = 'image too large (max 2MB)';
         return;
       }
-
       const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
       if (!allowed.includes(file.type)) {
-        error.value = 'only png/jpeg/gif/webp allowed';
+        error.value = 'only png/jpeg/gif/webp';
         return;
       }
-
       const reader = new FileReader();
       reader.onload = () => {
         const img = new Image();
         img.onload = () => {
-          // Downscale to MAX_AVATAR_DIM to keep base64 small
           const canvas = document.createElement('canvas');
           let w = img.width, h = img.height;
           if (w > MAX_AVATAR_DIM || h > MAX_AVATAR_DIM) {
@@ -515,75 +923,48 @@ createApp({
         img.src = reader.result;
       };
       reader.readAsDataURL(file);
-
-      // Reset so same file can be re-selected
       e.target.value = '';
     }
 
-    async function fetchPosts() {
-      try {
-        const res = await fetch(API);
-        if (!res.ok) throw new Error('fetch failed');
-        posts.value = await res.json();
-      } catch (e) {
-        console.error(e);
-      } finally {
-        loadingPosts.value = false;
-      }
-    }
-
-    async function submit() {
-      if (!canSubmit.value || sending.value) return;
-      error.value = '';
-      sending.value = true;
-
-      try {
-        const res = await fetch(API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            author: author.value.trim(),
-            avatar: avatarData.value,
-            content: content.value.trim(),
-          }),
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-          error.value = data.error || 'something went wrong';
-          return;
-        }
-
-        posts.value.unshift(data);
-        content.value = '';
-        // Keep avatar and author for quick follow-up posts
-      } catch (e) {
-        error.value = 'network error - is the server running?';
-      } finally {
-        sending.value = false;
-      }
-    }
-
+    // --- Helpers ---
     function initials(name) {
       const parts = name.split(/\s+/).filter(Boolean);
       if (parts.length >= 2) return parts[0][0] + parts[1][0];
       return name.slice(0, 2);
     }
 
-    function ago(iso) {
-      const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-      if (diff < 60) return 'just now';
-      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-      return Math.floor(diff / 86400) + 'd ago';
-    }
+    // --- Lifecycle ---
+    onMounted(async () => {
+      await fetchInitial();
 
-    onMounted(fetchPosts);
+      // Infinite scroll observer
+      await nextTick();
+      if (sentinel.value) {
+        observer = new IntersectionObserver(
+          entries => { if (entries[0].isIntersecting) loadMore(); },
+          { rootMargin: '200px' },
+        );
+        observer.observe(sentinel.value);
+      }
+
+      // Start polling
+      pollTimer = setInterval(poll, POLL_INTERVAL);
+
+      // Live timestamps
+      timestampTimer = setInterval(refreshTimestamps, TIMESTAMP_INTERVAL);
+    });
+
+    onUnmounted(() => {
+      if (pollTimer) clearInterval(pollTimer);
+      if (timestampTimer) clearInterval(timestampTimer);
+      if (observer) observer.disconnect();
+    });
 
     return {
       author, content, avatarData, error, sending,
-      posts, loadingPosts, canSubmit,
-      submit, handleAvatar, initials, ago,
+      posts, pendingPosts, initialLoading, loadingMore, hasMore,
+      toasts, sentinel, canSubmit,
+      submit, deletePost, handleAvatar, mergePending, initials,
     };
   },
 }).mount('#app');
