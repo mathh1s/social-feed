@@ -8,6 +8,7 @@ services:
     environment:
       - DB_PATH=/app/data/feed.db
       - ADDR=:7291
+      - ADMIN_PASS=${ADMIN_PASS:-changeme}
     restart: unless-stopped
 
 volumes:
