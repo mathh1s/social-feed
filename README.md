@@ -8,6 +8,9 @@ Tiny social feed. Go + Vue.js + SQLite.
 - Image attachments (resized client-side, stored as base64)
 - Link previews (auto-fetched OpenGraph metadata)
 - Reply threads (nested replies with inline composer)
+- **Emoji reactions** (👍 🔥 ❤️ 😂, toggle per IP)
+- **Post search** (live search with debounce)
+- **Post deletion** (server-generated secret tokens, only your own posts)
 - Sound effects (Web Audio API, post sent + new post notification)
 - Profile pictures (base64 avatars, cached in localStorage)
 - Auto-refresh polling (5s) with "new posts" banner
@@ -67,3 +70,6 @@ docker-compose.yml
 | GET    | `/api/posts/new`       | Poll for new posts            |
 | GET    | `/api/posts/replies`   | Get replies for a post        |
 | GET    | `/api/preview`         | Fetch link preview for a URL  |
+| POST   | `/api/react`           | Toggle emoji reaction         |
+| POST   | `/api/delete`          | Delete post with secret token |
+| GET    | `/api/search`          | Search posts by content       |

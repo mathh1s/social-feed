@@ -121,6 +121,99 @@ func Run() {
 		writeJSON(w, http.StatusOK, replies)
 	})
 
+	// POST /api/react?post_id=N
+	reactLimiter := newRateLimiter(60, time.Minute)
+	mux.HandleFunc("/api/react", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		ip := clientIP(r)
+		if !reactLimiter.allow(ip) {
+			writeError(w, http.StatusTooManyRequests, "slow down")
+			return
+		}
+		postID := queryInt(r, "post_id", 0)
+		if postID <= 0 {
+			writeError(w, http.StatusBadRequest, "invalid post_id")
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, 1024)
+		var req reactRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid JSON")
+			return
+		}
+		counts, err := store.react(postID, req.Emoji, ip)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid reaction")
+			return
+		}
+		writeJSON(w, http.StatusOK, counts)
+	})
+
+	// DELETE /api/delete?post_id=N
+	mux.HandleFunc("/api/delete", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		ip := clientIP(r)
+		if !writeLimiter.allow(ip) {
+			writeError(w, http.StatusTooManyRequests, "slow down")
+			return
+		}
+		postID := queryInt(r, "post_id", 0)
+		if postID <= 0 {
+			writeError(w, http.StatusBadRequest, "invalid post_id")
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, 1024)
+		var req deleteRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid JSON")
+			return
+		}
+		if req.Token == "" {
+			writeError(w, http.StatusUnauthorized, "token required")
+			return
+		}
+		ok, err := store.deletePost(postID, req.Token)
+		if err != nil {
+			log.Printf("db delete error: %v", err)
+			writeError(w, http.StatusInternalServerError, "failed to delete")
+			return
+		}
+		if !ok {
+			writeError(w, http.StatusForbidden, "invalid token or post not found")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"deleted": true})
+	})
+
+	// GET /api/search?q=...
+	mux.HandleFunc("/api/search", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		q := r.URL.Query().Get("q")
+		if len(q) < 2 {
+			writeError(w, http.StatusBadRequest, "query too short")
+			return
+		}
+		if len(q) > 100 {
+			q = q[:100]
+		}
+		posts, err := store.search(q, 30)
+		if err != nil {
+			log.Printf("db search error: %v", err)
+			writeError(w, http.StatusInternalServerError, "search failed")
+			return
+		}
+		writeJSON(w, http.StatusOK, posts)
+	})
+
 	// GET /api/preview?url=...
 	mux.HandleFunc("/api/preview", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

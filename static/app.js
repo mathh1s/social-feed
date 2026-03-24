@@ -5,6 +5,8 @@ const MAX_AVATAR_DIM = 128;
 const MAX_IMAGE_DIM = 800;
 const PAGE_SIZE = 20;
 const STORAGE_KEY = 'feed_user';
+const TOKENS_KEY = 'feed_tokens';
+const EMOJIS = ['👍', '🔥', '❤️', '😂'];
 
 marked.setOptions({ breaks: true, gfm: true });
 
@@ -32,6 +34,7 @@ const SFX = {
   },
   sent() { this.play(880, 0.12, 'sine', 0.1); setTimeout(() => this.play(1100, 0.1, 'sine', 0.08), 80); },
   newPost() { this.play(660, 0.15, 'triangle', 0.08); },
+  react() { this.play(520, 0.08, 'sine', 0.06); },
 };
 
 // --- Markdown ---
@@ -90,6 +93,24 @@ function validateFile(file, maxMB, errorRef) {
   return true;
 }
 
+// --- Delete token storage ---
+function loadTokens() {
+  try { return JSON.parse(localStorage.getItem(TOKENS_KEY)) || {}; } catch { return {}; }
+}
+function saveToken(postId, token) {
+  const t = loadTokens();
+  t[postId] = token;
+  try { localStorage.setItem(TOKENS_KEY, JSON.stringify(t)); } catch {}
+}
+function getToken(postId) {
+  return loadTokens()[postId] || '';
+}
+function removeToken(postId) {
+  const t = loadTokens();
+  delete t[postId];
+  try { localStorage.setItem(TOKENS_KEY, JSON.stringify(t)); } catch {}
+}
+
 // --- Vue app ---
 createApp({
   setup() {
@@ -108,8 +129,11 @@ createApp({
     const sentinel = ref(null);
     const lightboxSrc = ref('');
     const replyingTo = ref(null);
+    const searchQuery = ref('');
+    const searchResults = ref(null);
+    const searching = ref(false);
 
-    let pollTimer, timestampTimer, observer, toastCounter = 0;
+    let pollTimer, timestampTimer, observer, toastCounter = 0, searchDebounce;
 
     const canSubmit = computed(() =>
       author.value.trim().length > 0 && content.value.trim().length > 0
@@ -157,6 +181,8 @@ createApp({
       p._showReplies = false;
       p._loadingReplies = false;
       p._replyText = '';
+      p._canDelete = !!getToken(p.id);
+      p._reactions = p.reactions || {};
       if (p.preview) {
         try { p._preview = JSON.parse(p.preview); } catch {}
       }
@@ -194,6 +220,7 @@ createApp({
     }
 
     async function poll() {
+      if (searchResults.value) return;
       try {
         const res = await fetch(`${API}/new?after_id=${highestId()}`);
         if (!res.ok) return;
@@ -238,11 +265,19 @@ createApp({
           return;
         }
 
+        if (data.delete_token) {
+          saveToken(data.id, data.delete_token);
+        }
+
         if (replyingTo.value) {
           const parent = posts.value.find(p => p.id === replyingTo.value.id);
           if (parent) {
             parent.reply_count++;
-            if (parent._showReplies) parent._replies.push(data);
+            if (parent._showReplies) {
+              data._canDelete = !!getToken(data.id);
+              data._reactions = data.reactions || {};
+              parent._replies.push(data);
+            }
           }
           replyingTo.value = null;
           toast('replied');
@@ -277,7 +312,12 @@ createApp({
       try {
         const res = await fetch(`${API}/replies?post_id=${post.id}`);
         if (!res.ok) throw new Error();
-        post._replies = await res.json();
+        const replies = await res.json();
+        post._replies = replies.map(r => {
+          r._canDelete = !!getToken(r.id);
+          r._reactions = r.reactions || {};
+          return r;
+        });
       } catch { toast('failed to load replies', 'error'); }
       finally { post._loadingReplies = false; }
     }
@@ -302,11 +342,75 @@ createApp({
         });
         const data = await res.json();
         if (!res.ok) { toast(data.error || 'failed', 'error'); return; }
+        if (data.delete_token) saveToken(data.id, data.delete_token);
+        data._canDelete = !!getToken(data.id);
+        data._reactions = data.reactions || {};
         post._replies.push(data);
         post.reply_count++;
         post._replyText = '';
         SFX.sent();
       } catch { toast('network error', 'error'); }
+    }
+
+    // --- Reactions ---
+    async function react(post, emoji) {
+      try {
+        const res = await fetch(`/api/react?post_id=${post.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emoji }),
+        });
+        if (!res.ok) return;
+        const counts = await res.json();
+        post._reactions = counts;
+        SFX.react();
+      } catch {}
+    }
+
+    // --- Delete ---
+    async function deletePost(post) {
+      const token = getToken(post.id);
+      if (!token || !confirm('Delete this post?')) return;
+      try {
+        const res = await fetch(`/api/delete?post_id=${post.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          toast(data.error || 'failed to delete', 'error');
+          return;
+        }
+        removeToken(post.id);
+        posts.value = posts.value.filter(p => p.id !== post.id);
+        toast('deleted');
+      } catch { toast('network error', 'error'); }
+    }
+
+    // --- Search ---
+    function onSearchInput() {
+      clearTimeout(searchDebounce);
+      const q = searchQuery.value.trim();
+      if (q.length < 2) {
+        searchResults.value = null;
+        return;
+      }
+      searchDebounce = setTimeout(async () => {
+        searching.value = true;
+        try {
+          const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+          if (!res.ok) throw new Error();
+          const data = await res.json();
+          searchResults.value = data.map(p => enrichPost(p));
+        } catch { toast('search failed', 'error'); }
+        finally { searching.value = false; }
+      }, 300);
+    }
+
+    function clearSearch() {
+      searchQuery.value = '';
+      searchResults.value = null;
     }
 
     // --- Avatar / Image handlers ---
@@ -329,6 +433,10 @@ createApp({
     function initials(name) {
       const p = name.split(/\s+/).filter(Boolean);
       return p.length >= 2 ? p[0][0] + p[1][0] : name.slice(0, 2);
+    }
+
+    function hasReactions(reactions) {
+      return reactions && Object.values(reactions).some(v => v > 0);
     }
 
     // --- Lifecycle ---
@@ -357,8 +465,11 @@ createApp({
       author, content, avatarData, imageData, error, sending,
       posts, pendingPosts, initialLoading, loadingMore, hasMore,
       toasts, sentinel, lightboxSrc, replyingTo, canSubmit,
+      searchQuery, searchResults, searching,
       submit, handleAvatar, clearAvatar, handleImage, mergePending,
       initials, renderMd, computeAgo, startReply, toggleReplies, submitReply,
+      react, deletePost, onSearchInput, clearSearch, hasReactions,
+      EMOJIS,
     };
   },
 }).mount('#app');
