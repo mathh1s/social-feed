@@ -310,9 +310,7 @@ body::before {
 .delete-btn {
   background: none; border: none; color: var(--ink-light); font-size: 0.72rem;
   font-family: var(--sans); cursor: pointer; padding: 2px 0; transition: color 0.15s;
-  opacity: 0; pointer-events: none;
 }
-.post:hover .delete-btn { opacity: 1; pointer-events: auto; }
 .delete-btn:hover { color: var(--danger); }
 
 /* -- REPLIES -- */

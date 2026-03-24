@@ -353,18 +353,24 @@ createApp({
     }
 
     // --- Reactions ---
-    async function react(post, emoji) {
+    async function toggleReact(post, emoji) {
       try {
         const res = await fetch(`/api/react?post_id=${post.id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ emoji }),
         });
-        if (!res.ok) return;
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          toast(data.error || 'reaction failed', 'error');
+          return;
+        }
         const counts = await res.json();
-        post._reactions = counts;
+        // Update reactively
+        Object.keys(post._reactions).forEach(k => delete post._reactions[k]);
+        Object.assign(post._reactions, counts);
         SFX.react();
-      } catch {}
+      } catch (e) { toast('reaction failed', 'error'); }
     }
 
     // --- Delete ---
@@ -468,7 +474,7 @@ createApp({
       searchQuery, searchResults, searching,
       submit, handleAvatar, clearAvatar, handleImage, mergePending,
       initials, renderMd, computeAgo, startReply, toggleReplies, submitReply,
-      react, deletePost, onSearchInput, clearSearch, hasReactions,
+      react: toggleReact, deletePost, onSearchInput, clearSearch, hasReactions,
       EMOJIS,
     };
   },
