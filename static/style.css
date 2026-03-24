@@ -176,17 +176,10 @@ body::before {
 .post {
   background: var(--card); color: var(--ink); border-radius: 6px;
   padding: 1.1rem 1.25rem; margin-bottom: 0.6rem; position: relative;
-  display: flex; gap: 0.85rem; transition: transform 0.2s var(--ease);
+  display: flex; gap: 0.85rem;
 }
 .post.entering { animation: slideUp 0.4s var(--ease) both; }
 .post:nth-child(even) { background: var(--card-alt); }
-.post::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-  background: var(--accent); border-radius: 6px 0 0 6px; opacity: 0; transition: opacity 0.25s;
-}
-.post:hover::before { opacity: 1; }
-.post:hover { transform: translateX(2px); }
-
 .post-avatar {
   flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%;
   overflow: hidden; background: rgba(0,0,0,0.06); display: flex;
