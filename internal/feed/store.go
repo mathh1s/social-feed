@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"os"
 	"strings"
 	"time"
 
@@ -67,7 +68,8 @@ func initDB(path string) (*sql.DB, error) {
 }
 
 type store struct {
-	db *sql.DB
+	db     *sql.DB
+	dbPath string
 }
 
 const postCols = "p.id, p.parent_id, p.author, p.avatar, p.content, p.image, p.preview, p.created_at, p.delete_token"
@@ -300,4 +302,57 @@ func (s *store) exists(id int) bool {
 	var n int
 	_ = s.db.QueryRow("SELECT 1 FROM posts WHERE id = ?", id).Scan(&n)
 	return n == 1
+}
+
+func (s *store) stats() adminStats {
+	var st adminStats
+
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM posts WHERE parent_id IS NULL").Scan(&st.TotalPosts)
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM posts WHERE parent_id IS NOT NULL").Scan(&st.TotalReplies)
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM reactions").Scan(&st.TotalReactions)
+	_ = s.db.QueryRow("SELECT COUNT(DISTINCT author) FROM posts").Scan(&st.UniqueAuthors)
+
+	now := time.Now().UTC()
+	today := now.Format("2006-01-02")
+	weekAgo := now.AddDate(0, 0, -7).Format(time.RFC3339)
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM posts WHERE created_at >= ?", today).Scan(&st.PostsToday)
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM posts WHERE created_at >= ?", weekAgo).Scan(&st.PostsThisWeek)
+
+	// Top 10 posters
+	rows, err := s.db.Query("SELECT author, COUNT(*) AS c FROM posts GROUP BY author ORDER BY c DESC LIMIT 10")
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var p posterStat
+			if rows.Scan(&p.Author, &p.Count) == nil {
+				st.TopPosters = append(st.TopPosters, p)
+			}
+		}
+	}
+	if st.TopPosters == nil {
+		st.TopPosters = []posterStat{}
+	}
+
+	// Reaction breakdown
+	st.ReactionBreak = make(map[string]int)
+	rrows, err := s.db.Query("SELECT emoji, COUNT(*) FROM reactions GROUP BY emoji")
+	if err == nil {
+		defer rrows.Close()
+		for rrows.Next() {
+			var emoji string
+			var count int
+			if rrows.Scan(&emoji, &count) == nil {
+				st.ReactionBreak[emoji] = count
+			}
+		}
+	}
+
+	// DB file size
+	if s.dbPath != "" {
+		if fi, err := os.Stat(s.dbPath); err == nil {
+			st.DbSizeBytes = fi.Size()
+		}
+	}
+
+	return st
 }

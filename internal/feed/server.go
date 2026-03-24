@@ -2,11 +2,16 @@ package feed
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -20,9 +25,48 @@ func Run() {
 	}
 	defer db.Close()
 
-	store := &store{db: db}
+	store := &store{db: db, dbPath: dbPath}
+	adminPass := envOr("ADMIN_PASS", "changeme")
 	writeLimiter := newRateLimiter(10, time.Minute)
 	previewLimiter := newRateLimiter(30, time.Minute)
+	loginLimiter := newRateLimiter(5, time.Minute)
+
+	// Admin session tokens (in-memory, 24h expiry)
+	var adminMu sync.Mutex
+	adminSessions := make(map[string]time.Time)
+
+	newAdminToken := func() string {
+		b := make([]byte, 32)
+		_, _ = rand.Read(b)
+		tok := hex.EncodeToString(b)
+		adminMu.Lock()
+		// Clean expired
+		for k, exp := range adminSessions {
+			if time.Now().After(exp) {
+				delete(adminSessions, k)
+			}
+		}
+		adminSessions[tok] = time.Now().Add(24 * time.Hour)
+		adminMu.Unlock()
+		return tok
+	}
+
+	checkAdmin := func(r *http.Request) bool {
+		auth := r.Header.Get("Authorization")
+		tok := strings.TrimPrefix(auth, "Bearer ")
+		if tok == "" || tok == auth {
+			return false
+		}
+		adminMu.Lock()
+		defer adminMu.Unlock()
+		exp, ok := adminSessions[tok]
+		if !ok || time.Now().After(exp) {
+			delete(adminSessions, tok)
+			return false
+		}
+		return true
+	}
+
 	mux := http.NewServeMux()
 
 	// GET /api/posts?before_id=N&limit=N
@@ -235,6 +279,48 @@ func Run() {
 			return
 		}
 		writeJSON(w, http.StatusOK, lp)
+	})
+
+	// POST /api/admin/login
+	mux.HandleFunc("/api/admin/login", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		if !loginLimiter.allow(clientIP(r)) {
+			writeError(w, http.StatusTooManyRequests, "too many attempts, try again later")
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, 1024)
+		var req loginRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid JSON")
+			return
+		}
+		if subtle.ConstantTimeCompare([]byte(req.Password), []byte(adminPass)) != 1 {
+			writeError(w, http.StatusUnauthorized, "wrong password")
+			return
+		}
+		tok := newAdminToken()
+		writeJSON(w, http.StatusOK, map[string]string{"token": tok})
+	})
+
+	// GET /api/admin/stats
+	mux.HandleFunc("/api/admin/stats", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		if !checkAdmin(r) {
+			writeError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+		writeJSON(w, http.StatusOK, store.stats())
+	})
+
+	// GET /admin
+	mux.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "static/admin.html")
 	})
 
 	// Static files

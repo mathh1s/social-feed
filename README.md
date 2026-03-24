@@ -11,6 +11,7 @@ Tiny social feed. Go + Vue.js + SQLite.
 - **Emoji reactions** (👍 🔥 ❤️ 😂, toggle per IP)
 - **Post search** (live search with debounce)
 - **Post deletion** (server-generated secret tokens, only your own posts)
+- **Admin dashboard** at `/admin` (post/reply/reaction counts, top posters, db size)
 - Sound effects (Web Audio API, post sent + new post notification)
 - Profile pictures (base64 avatars, cached in localStorage)
 - Auto-refresh polling (5s) with "new posts" banner
@@ -56,10 +57,11 @@ docker-compose.yml
 
 ## Config
 
-| Env var   | Default   | Description          |
-|-----------|-----------|----------------------|
-| `DB_PATH` | `feed.db` | SQLite database path |
-| `ADDR`    | `:7291`   | Listen address       |
+| Env var      | Default    | Description            |
+|--------------|------------|------------------------|
+| `DB_PATH`    | `feed.db`  | SQLite database path   |
+| `ADDR`       | `:7291`    | Listen address         |
+| `ADMIN_PASS` | `changeme` | Admin dashboard password |
 
 ## API
 
@@ -73,3 +75,5 @@ docker-compose.yml
 | POST   | `/api/react`           | Toggle emoji reaction         |
 | POST   | `/api/delete`          | Delete post with secret token |
 | GET    | `/api/search`          | Search posts by content       |
+| POST   | `/api/admin/login`     | Admin login (returns token)   |
+| GET    | `/api/admin/stats`     | Dashboard stats (auth required)|
