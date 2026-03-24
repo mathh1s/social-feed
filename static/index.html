@@ -23,32 +23,6 @@
       <p class="tagline">Unfiltered &middot; Unmoderated &middot; Unsigned</p>
     </header>
 
-    <!-- SEARCH -->
-    <div class="search-bar">
-      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      <input v-model="searchQuery" type="text" placeholder="search posts..." maxlength="100" @input="doSearch" />
-      <button v-if="searchQuery" class="search-clear" @click="clearSearch">&times;</button>
-    </div>
-
-    <!-- SEARCH RESULTS -->
-    <div v-if="searchResults !== null" class="search-results">
-      <p class="feed-label">{{ searching ? 'searching...' : searchResults.length + ' result' + (searchResults.length !== 1 ? 's' : '') }}</p>
-      <article v-for="post in searchResults" :key="'s-'+post.id" class="post">
-        <div class="post-avatar">
-          <img v-if="post.avatar" :src="post.avatar" alt="" />
-          <span v-else class="initials">{{ initials(post.author) }}</span>
-        </div>
-        <div class="post-body">
-          <div class="post-header">
-            <span class="post-author">{{ post.author }}</span>
-            <span class="post-time">{{ post._ago }}</span>
-          </div>
-          <div class="post-content" v-html="renderMd(post.content)"></div>
-        </div>
-      </article>
-      <div v-if="!searching && !searchResults.length" class="empty">No posts found.</div>
-    </div>
-
     <!-- COMPOSER -->
     <section class="composer">
       <div v-if="replyingTo" class="reply-indicator">
@@ -88,21 +62,14 @@
     </section>
 
     <!-- SEARCH -->
-    <section class="search-bar">
-      <div class="search-input-wrap">
-        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-        <input v-model="searchQuery" type="text" placeholder="search posts..." @input="onSearchInput" />
-        <button v-if="searchQuery" class="search-clear" @click="clearSearch">&times;</button>
-      </div>
-      <div v-if="searching" class="search-status">searching...</div>
-      <div v-if="searchResults && !searching" class="search-status">
-        {{ searchResults.length }} result{{ searchResults.length !== 1 ? 's' : '' }}
-        <button class="search-back" @click="clearSearch">clear</button>
-      </div>
-    </section>
+    <div class="search-bar">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input v-model="searchQuery" type="text" placeholder="search posts..." maxlength="100" @input="onSearchInput" />
+      <button v-if="searchQuery" class="search-clear" @click="clearSearch">&times;</button>
+    </div>
 
     <!-- NEW POSTS BANNER -->
-    <div v-if="pendingPosts.length" class="new-banner">
+    <div v-if="pendingPosts.length && !searchResults" class="new-banner">
       <button @click="mergePending">{{ pendingPosts.length }} new post{{ pendingPosts.length > 1 ? 's' : '' }}</button>
     </div>
 
@@ -116,8 +83,9 @@
 
     <!-- FEED -->
     <template v-else>
-      <p v-if="searchResults" class="feed-label">Search Results</p>
+      <p v-if="searchResults" class="feed-label">{{ searching ? 'searching...' : searchResults.length + ' result' + (searchResults.length !== 1 ? 's' : '') }}</p>
       <p v-else-if="posts.length" class="feed-label">Latest</p>
+
       <article v-for="post in (searchResults || posts)" :key="post.id" class="post" :class="{ entering: post._new }">
         <div class="post-avatar">
           <img v-if="post.avatar" :src="post.avatar" alt="" />
@@ -141,8 +109,8 @@
             </div>
           </a>
           <div class="reaction-bar">
-            <button v-for="e in EMOJIS" :key="e" class="reaction-btn" :class="{ active: post.reactions[e] }" @click="toggleReaction(post, e)">
-              {{ e }}<span v-if="post.reactions[e]" class="reaction-count">{{ post.reactions[e] }}</span>
+            <button v-for="e in EMOJIS" :key="e" class="reaction-btn" :class="{ active: post._reactions && post._reactions[e] }" @click="react(post, e)">
+              {{ e }}<span v-if="post._reactions && post._reactions[e]" class="reaction-count">{{ post._reactions[e] }}</span>
             </button>
           </div>
           <div class="reply-actions">
@@ -150,7 +118,7 @@
             <button v-if="post.reply_count > 0" class="toggle-replies-btn" @click="toggleReplies(post)">
               {{ post._showReplies ? 'hide' : 'show' }} {{ post.reply_count }} repl{{ post.reply_count === 1 ? 'y' : 'ies' }}
             </button>
-            <button v-if="post._own" class="delete-btn" @click="deletePost(post)">delete</button>
+            <button v-if="post._canDelete" class="delete-btn" @click="deletePost(post)">delete</button>
           </div>
           <div v-if="post._showReplies" class="replies-section">
             <div v-if="post._loadingReplies" class="replies-loading">loading...</div>
@@ -178,10 +146,13 @@
         </div>
       </article>
 
-      <div ref="sentinel" class="load-more-trigger"></div>
-      <div v-if="loadingMore" class="loading-more"><span class="spinner"></span> loading...</div>
-      <div v-if="!hasMore && posts.length > 5" class="end-of-feed">end of feed</div>
-      <div v-if="!posts.length && !pendingPosts.length" class="empty">Nothing here yet. Be the first to post.</div>
+      <template v-if="!searchResults">
+        <div ref="sentinel" class="load-more-trigger"></div>
+        <div v-if="loadingMore" class="loading-more"><span class="spinner"></span> loading...</div>
+        <div v-if="!hasMore && posts.length > 5" class="end-of-feed">end of feed</div>
+      </template>
+      <div v-if="searchResults && !searchResults.length && !searching" class="empty">No posts found.</div>
+      <div v-if="!searchResults && !posts.length && !pendingPosts.length" class="empty">Nothing here yet. Be the first to post.</div>
     </template>
   </div>
 
