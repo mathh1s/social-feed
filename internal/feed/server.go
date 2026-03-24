@@ -26,7 +26,6 @@ func Run() {
 	defer db.Close()
 
 	store := &store{db: db, dbPath: dbPath}
-	adminPass := envOr("ADMIN_PASS", "changeme")
 	writeLimiter := newRateLimiter(10, time.Minute)
 	previewLimiter := newRateLimiter(30, time.Minute)
 	loginLimiter := newRateLimiter(5, time.Minute)
@@ -297,7 +296,7 @@ func Run() {
 			writeError(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		if subtle.ConstantTimeCompare([]byte(req.Password), []byte(adminPass)) != 1 {
+		if subtle.ConstantTimeCompare([]byte(req.Password), []byte(envOr("ADMIN_PASS", "changeme"))) != 1 {
 			writeError(w, http.StatusUnauthorized, "wrong password")
 			return
 		}
